@@ -8,7 +8,7 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from agents_manager.Model import Model
 
 
-class OpenAi(Model):
+class DeepSeek(Model):
     def __init__(self, name: str, **kwargs: Any) -> None:
         """
         Initialize the OpenAi model with a name and optional keyword arguments.
@@ -24,6 +24,7 @@ class OpenAi(Model):
 
         self.client = OpenAI(
             api_key=kwargs.get("api_key"),  # type: Optional[str]
+            base_url="https://api.deepseek.com"
         )
 
     def generate_response(self) -> Dict:

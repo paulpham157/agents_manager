@@ -11,7 +11,15 @@ A lightweight Python package for managing multi-agent orchestration. Easily defi
 
 ## Supported Models
 
-Currently, only OpenAi models are supported.
+- OpenAI
+- Grok
+- DeepSeek
+
+```python
+
+from agents_manager.models import OpenAi, Grok, DeepSeek
+
+```
 
 ## Installation
 
@@ -24,9 +32,9 @@ pip install agents-manager
 ## Quick Start
 
 ```python
-from agents_manager.Agent import Agent
-from agents_manager.AgentManager import AgentManager
-from agents_manager.models.OpenAi import OpenAi
+from agents_manager import Agent, AgentManager
+from agents_manager.models import OpenAi
+
 from dotenv import load_dotenv
 
 load_dotenv()
