@@ -40,10 +40,18 @@ def multiply(a: int, b: int) -> int:
     """
     return a * b
 
+
 def transfer_to_agent_3_for_math_calculation() -> Agent:
+    """
+    Transfer to agent 3 for math calculation.
+    """
     return agent3
 
+
 def transfer_to_agent_2_for_math_calculation() -> Agent:
+    """
+    Transfer to agent 2 for math calculation.
+    """
     return agent2
 
 # Define agents
