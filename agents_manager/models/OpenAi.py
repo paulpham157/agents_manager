@@ -1,9 +1,7 @@
-from typing import Iterator
 from typing import List, Dict, Any, Union, Optional
 
 from openai import OpenAI
-from openai.types.chat import ChatCompletion, ChatCompletionMessageToolCall
-from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+from openai.types.chat import ChatCompletion
 
 from agents_manager.Model import Model
 
@@ -17,10 +15,10 @@ class OpenAi(Model):
             name (str): The name of the OpenAI model (e.g., "gpt-3.5-turbo").
             **kwargs (Any): Additional arguments, including optional "api_key".
         """
+        super().__init__(name, **kwargs)
+
         if name is None:
             raise ValueError("A valid  OpenAI model name is required")
-
-        super().__init__(name, **kwargs)
 
         self.client = OpenAI(
             api_key=kwargs.get("api_key"),  # type: Optional[str]
@@ -44,28 +42,30 @@ class OpenAi(Model):
             messages=self.get_messages(),  # type: List[Dict[str, str]]
             **self.kwargs  # type: Dict[str, Any]
         )
-        message = response.choices[0].message
-        return {
-            "tool_calls": message.tool_calls,
-            "content": message.content,
-        }
+        stream = self.kwargs.get("stream", False)
+        if stream:
+            final_tool_calls = {}
+            final_content = ""
+            for chunk in response:
+                for tool_call in chunk.choices[0].delta.tool_calls or []:
+                    index = tool_call.index
+                    if index not in final_tool_calls:
+                        final_tool_calls[index] = tool_call
+                    final_tool_calls[index].function.arguments += tool_call.function.arguments
 
-    def generate_response_stream(self) -> Iterator[ChatCompletionChunk]:
-        """
-        Generate a streaming response from the OpenAI model.
+                if chunk.choices[0].delta.content is not None:
+                    final_content += chunk.choices[0].delta.content
 
-        Returns:
-            Iterator[ChatCompletionChunk]: An iterator over ChatCompletionChunk objects.
-        """
-        if "api_key" in self.kwargs:
-            self.kwargs.pop("api_key")
-
-        return self.client.chat.completions.create(
-            model=self.name,  # type: str
-            messages=self.get_messages(),  # type: List[Dict[str, str]]
-            **self.kwargs,  # type: Dict[str, Any]
-            stream=True,  # type: bool
-        )
+            return {
+                "tool_calls": list(final_tool_calls.values()),
+                "content": final_content,
+            }
+        else:
+            message = response.choices[0].message
+            return {
+                "tool_calls": message.tool_calls,
+                "content": message.content,
+            }
 
     def get_tool_format(self) -> Dict[str, Any]:
         return {
@@ -98,7 +98,7 @@ class OpenAi(Model):
             "tool_call_id": "{id}",
         }
 
-    def get_parsed_tool_call_data(self, tool_call: ChatCompletionMessageToolCall) -> Dict[str, Any]:
+    def get_parsed_tool_call_data(self, tool_call: Any) -> Dict[str, Any]:
         return {
             "id": tool_call.id,
             "name": tool_call.function.name,

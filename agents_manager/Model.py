@@ -61,16 +61,6 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def generate_response_stream(self) -> Any:
-        """
-        Generate a streaming response based on the model's implementation.
-
-        Returns:
-            Any: The streaming response, type depends on the concrete implementation.
-        """
-        pass
-
-    @abstractmethod
     def get_tool_format(self) -> Dict[str, Any]:
         """
         Get the format for the tool call.
@@ -79,6 +69,7 @@ class Model(ABC):
             Dict[str, Any]: The tool call format.
         """
         pass
+
 
     @abstractmethod
     def get_tool_call_format(self) -> Dict[str, Any]:

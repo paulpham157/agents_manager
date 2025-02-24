@@ -61,56 +61,56 @@ class AgentManager:
 
         response = agent.get_response()
 
-        if response['tool_calls']:
-            tool_calls = response['tool_calls']
-            current_messages = agent.get_messages()
+        if not response['tool_calls']:
+            return response["content"]
 
-            output_tool_calls = []
-            for tool_call in tool_calls:
-                output = agent.get_model().get_parsed_tool_call_data(tool_call)
-                populated_data = populate_template(agent.get_model().get_tool_call_format(), output)
-                output_tool_calls.append(populated_data)
+        tool_calls = response['tool_calls']
+        current_messages = agent.get_messages()
 
-            if output_tool_calls and len(output_tool_calls) > 0:
-                assistant_message = {
-                    "role": "assistant",
-                    "content": response["content"] or "",
-                    "tool_calls": output_tool_calls,
-                }
-                current_messages.append(assistant_message)
+        output_tool_calls = []
+        for tool_call in tool_calls:
+            output = agent.get_model().get_parsed_tool_call_data(tool_call)
+            populated_data = populate_template(agent.get_model().get_tool_call_format(), output)
+            output_tool_calls.append(populated_data)
 
-            for tool_call in tool_calls:
-                output = agent.get_model().get_parsed_tool_call_data(tool_call)
-                function_name = output["name"]
-                arguments = json.loads(output["arguments"])
+        if output_tool_calls and len(output_tool_calls) > 0:
+            assistant_message = {
+                "role": "assistant",
+                "content": response["content"] or "",
+                "tool_calls": output_tool_calls,
+            }
+            current_messages.append(assistant_message)
 
-                tools = agent.tools
-                for tool in tools:
-                    if tool.__name__ == function_name:
-                        tool_result = tool(**arguments)
-                        if isinstance(tool_result, Agent):
-                            self.add_agent(tool_result)
-                            nested_response = self.run_agent(tool_result.name,
-                                                             user_input
-                                                             )
-                            tool_response_content = (
-                                nested_response.content
-                                if hasattr(nested_response, "content")
-                                else str(nested_response)
-                            )
-                            tool_response = {
-                                                "role": "tool",
-                                                "content": tool_response_content,
-                                            } | populate_template(agent.get_model().get_tool_call_id_format(), output)
-                        else:
-                            tool_response = {
-                                                "role": "tool",
-                                                "content": str(tool_result),
-                                            } | populate_template(agent.get_model().get_tool_call_id_format(), output)
-                        current_messages.append(tool_response)
-            agent.set_messages(current_messages)
-            return agent.get_response()
-        return response
+        # executing the functions and getting the response
+        for tool_call in tool_calls:
+            output = agent.get_model().get_parsed_tool_call_data(tool_call)
+            function_name = output["name"]
+            arguments = json.loads(output["arguments"])
+            tools = agent.tools
+            for tool in tools:
+                if tool.__name__ == function_name:
+                    tool_result = tool(**arguments)
+                    if isinstance(tool_result, Agent):
+                        self.add_agent(tool_result)
+                        nested_response = self.run_agent(tool_result.name,
+                                                         user_input
+                                                         )
+                        tool_response_content = (
+                            nested_response.content
+                            if hasattr(nested_response, "content")
+                            else str(nested_response)
+                        )
+                        return tool_response_content
+                    else:
+                        tool_response = {
+                                            "role": "tool",
+                                            "content": str(tool_result),
+                                        } | populate_template(agent.get_model().get_tool_call_id_format(), output)
+                    current_messages.append(tool_response)
+
+        agent.set_messages(current_messages)
+        response = agent.get_response()
+        return response["content"]
 
     def run_agent_stream(self, name: str, user_input: Optional[str] = None) -> Any:
         """

@@ -90,7 +90,7 @@ agent_manager.add_agent(agent1)
 
 response = agent_manager.run_agent("agent1", "What is 459 * 1?")
 
-print(response["content"])
+print(response)
 ```
 
 ## How It Works
