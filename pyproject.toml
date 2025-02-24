@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agents-manager"
+version = "1.0.0"
+authors = [
+  { name = "Naroju Sandesh", email = "sandeshnaroju@gmail.com" },
+]
+description = "A lightweight Python package for managing multi-agent orchestration. Easily define agents with custom instructions, tools, and models, and orchestrate their interactions seamlessly. Perfect for building modular, collaborative AI systems."
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+  "openai>=1.0.0",  # Adjust version as needed
+  "python-dotenv>=0.21.0",
+]
+license = { text = "MIT" }
+keywords = ["agents", "multi-agent", "orchestration", "AI"]
+
+[project.urls]
+"Homepage" = "https://github.com/sandeshnaroju/agents_manager"
+"Repository" = "https://github.com/sandeshnaroju/agents_manager"
