@@ -2,7 +2,6 @@ from typing import List, Any, Optional, Callable, Dict
 
 from agents_manager.Model import Model
 from agents_manager.utils import function_to_json
-import copy
 
 
 class Agent:

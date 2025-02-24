@@ -60,7 +60,22 @@
 #         },
 #     }
 import inspect
-import pprint
+
+
+def populate_template(template, data):
+    if isinstance(template, dict):
+        result = {}
+        for key, value in template.items():
+            if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
+                key_in_data = value[1:-1]
+                result[key] = data.get(key_in_data, value)
+            else:
+                result[key] = populate_template(value, data)
+        return result
+    elif isinstance(template, list):
+        return [populate_template(item, data) for item in template]
+    else:
+        return template
 
 
 def function_to_json(func, format_template: dict = None) -> dict:
@@ -139,56 +154,23 @@ def function_to_json(func, format_template: dict = None) -> dict:
         "required": required if required else []
     }
 
-    # Helper function to recursively populate the template
-    def populate_template(template, data):
-        if isinstance(template, dict):
-            result = {}
-            for key, value in template.items():
-                if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
-                    key_in_data = value[1:-1]
-                    result[key] = data.get(key_in_data, value)
-                else:
-                    result[key] = populate_template(value, data)
-            return result
-        elif isinstance(template, list):
-            return [populate_template(item, data) for item in template]
-        else:
-            return template
-
-    result = populate_template(format_template, func_data)
-    pprint.pp(result)
-    return result
+    return populate_template(format_template, func_data)
 
 
-def extract_key_values(tool_call_output: dict, tool_call_template: dict) -> dict:
+def extract_key_values(tool_call_output: dict, keys_to_find: list) -> dict:
     """
-    Extracts values for keys defined in a tool_call template from a tool_call output.
+    Extracts values for specified keys from a tool_call output dictionary.
 
     Args:
         tool_call_output: The dictionary representing the populated tool_call output.
-        tool_call_template: The template dictionary with placeholders (e.g., "{id}", "{name}").
+        keys_to_find: A list of key names to search for (e.g., ["id", "name", "arguments"]).
 
     Returns:
-        A dictionary mapping each key from the template placeholders to its value(s) in the output.
+        A dictionary mapping each specified key to its value(s) from the output.
     """
-    # Step 1: Extract keys_to_find from the template by looking for {key} patterns
-    keys_to_find = set()
+    result = {key: [] for key in keys_to_find}  # Initialize with empty lists for each key
 
-    def find_placeholder_keys(data):
-        if isinstance(data, dict):
-            for value in data.values():
-                if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
-                    keys_to_find.add(value[1:-1])  # Extract the key inside {}
-                find_placeholder_keys(value)
-        elif isinstance(data, list):
-            for item in data:
-                find_placeholder_keys(item)
-
-    find_placeholder_keys(tool_call_template)
-
-    # Step 2: Search the tool_call_output for these keys
-    result = {key: [] for key in keys_to_find}  # Initialize with empty lists
-
+    # Helper function to recursively search the dictionary
     def search_dict(data, target_keys):
         if isinstance(data, dict):
             for key, value in data.items():
@@ -199,9 +181,10 @@ def extract_key_values(tool_call_output: dict, tool_call_template: dict) -> dict
             for item in data:
                 search_dict(item, target_keys)
 
+    # Start the search
     search_dict(tool_call_output, keys_to_find)
 
-    # Step 3: Clean up the result: single value if found once, list if multiple
+    # Clean up the result: single value if found once, list if multiple, omit if not found
     cleaned_result = {}
     for key, values in result.items():
         if values:  # Only include keys that were found

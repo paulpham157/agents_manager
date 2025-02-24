@@ -70,7 +70,6 @@ class Model(ABC):
         """
         pass
 
-
     @abstractmethod
     def get_tool_format(self) -> Dict[str, Any]:
         """
@@ -82,11 +81,31 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def get_tool_output_format(self) -> Dict[str, Any]:
+    def get_tool_call_format(self) -> Dict[str, Any]:
         """
-        Get the format for the tool output.
+        Get the assistant message for prepending to the response.
 
         Returns:
-            Dict[str, Any]: The tool output format.
+            Dict[str, Any]: The assistant message.
+        """
+        pass
+
+    @abstractmethod
+    def get_tool_call_id_format(self) -> Dict[str, Any]:
+        """
+        Get the tool message for appending to the response.
+
+        Returns:
+            Dict[str, Any]: The tool message.
+        """
+        pass
+
+    @abstractmethod
+    def get_parsed_tool_call_data(self, tool_call: Any)-> Dict[str, Any]:
+        """
+        Get the parsed tool call data.
+
+        Returns:
+            Dict[str, Any]: The parsed tool call data.
         """
         pass

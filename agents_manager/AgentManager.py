@@ -2,6 +2,7 @@ import json
 from typing import List, Optional, Any
 
 from agents_manager.Agent import Agent
+from agents_manager.utils import populate_template
 
 
 class AgentManager:
@@ -60,28 +61,29 @@ class AgentManager:
 
         response = agent.get_response()
 
-        if hasattr(response, 'tool_calls') and response.tool_calls:
-            tool_calls = response.tool_calls
+        if response['tool_calls']:
+            tool_calls = response['tool_calls']
             current_messages = agent.get_messages()
 
-            assistant_message = {
-                "role": "assistant",
-                "content": response.content or "",
-                "tool_calls": [
-                    {
-                        "id": tool_call.id,
-                        "type": "function",
-                        "function": {
-                            "name": tool_call.function.name,
-                            "arguments": tool_call.function.arguments
-                        }
-                    } for tool_call in tool_calls
-                ]
-            }
-            current_messages.append(assistant_message)
+            output_tool_calls = []
             for tool_call in tool_calls:
-                function_name = tool_call.function.name
-                arguments = json.loads(tool_call.function.arguments)
+                output = agent.get_model().get_parsed_tool_call_data(tool_call)
+                populated_data = populate_template(agent.get_model().get_tool_call_format(), output)
+                output_tool_calls.append(populated_data)
+
+            if output_tool_calls and len(output_tool_calls) > 0:
+                assistant_message = {
+                    "role": "assistant",
+                    "content": response["content"] or "",
+                    "tool_calls": output_tool_calls,
+                }
+                current_messages.append(assistant_message)
+
+            for tool_call in tool_calls:
+                output = agent.get_model().get_parsed_tool_call_data(tool_call)
+                function_name = output["name"]
+                arguments = json.loads(output["arguments"])
+
                 tools = agent.tools
                 for tool in tools:
                     if tool.__name__ == function_name:
@@ -92,21 +94,19 @@ class AgentManager:
                                                              user_input
                                                              )
                             tool_response_content = (
-                                nested_response.choices[0].message.content
-                                if hasattr(nested_response.choices[0].message, "content")
-                                else str(nested_response.choices[0].message)
+                                nested_response.content
+                                if hasattr(nested_response, "content")
+                                else str(nested_response)
                             )
                             tool_response = {
-                                "role": "tool",
-                                "tool_call_id": tool_call.id,
-                                "content": tool_response_content
-                            }
+                                                "role": "tool",
+                                                "content": tool_response_content,
+                                            } | populate_template(agent.get_model().get_tool_call_id_format(), output)
                         else:
                             tool_response = {
-                                "role": "tool",
-                                "tool_call_id": tool_call.id,
-                                "content": str(tool_result)
-                            }
+                                                "role": "tool",
+                                                "content": str(tool_result),
+                                            } | populate_template(agent.get_model().get_tool_call_id_format(), output)
                         current_messages.append(tool_response)
             agent.set_messages(current_messages)
             return agent.get_response()

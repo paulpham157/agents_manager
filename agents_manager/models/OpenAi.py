@@ -2,7 +2,7 @@ from typing import Iterator
 from typing import List, Dict, Any, Union, Optional
 
 from openai import OpenAI
-from openai.types.chat import ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from agents_manager.Model import Model
@@ -94,7 +94,7 @@ class OpenAi(Model):
             }
         }
 
-    def get_tool_output_format(self) -> Dict[str, Any]:
+    def get_tool_call_format(self) -> Dict[str, Any]:
         return {
             "id": "{id}",
             "type": "function",
@@ -102,4 +102,16 @@ class OpenAi(Model):
                 "name": "{name}",
                 "arguments": "{arguments}"
             }
+        }
+
+    def get_tool_call_id_format(self) -> Dict[str, Any]:
+        return {
+            "tool_call_id": "{id}",
+        }
+
+    def get_parsed_tool_call_data(self, tool_call: ChatCompletionMessageToolCall) -> Dict[str, Any]:
+        return {
+            "id": tool_call.id,
+            "name": tool_call.function.name,
+            "arguments": tool_call.function.arguments
         }
