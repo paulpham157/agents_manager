@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agents-manager"
-version = "1.0.6"
+version = "1.0.8"
 authors = [
   { name = "Naroju Sandesh", email = "sandeshnaroju@gmail.com" },
 ]
@@ -12,7 +12,8 @@ description = "A lightweight Python package for managing multi-agent orchestrati
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
-  "openai>=1.0.0",  # Adjust version as needed
+  "anthropic>=0.47.1",
+  "openai>=1.0.0",
   "python-dotenv>=0.21.0",
 ]
 license = { text = "MIT" }

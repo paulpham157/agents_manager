@@ -97,14 +97,12 @@ class Model(ABC):
         return {}
 
     @abstractmethod
-    def get_tool_message(self, tool_result: str, tool_call_id: str) -> Dict[str, Any]:
+    def get_tool_message(self, tool_responses: List[Dict[str, Any]]) -> Any:
         """
         Get the tool message for appending to the response.
 
         Args:
-            tool_result (str): The result of the tool call.
-            tool_call_id (str): The ID of the tool call.
-
+            tool_responses (List[Dict[str, Any]]): The tool responses.
         Returns:
             Dict[str, Any]: The tool message.
         """
