@@ -103,7 +103,7 @@ class OpenAi(Model):
         }
 
     def get_assistant_message(self, response: Any):
-        
+
         tool_calls = response["tool_calls"]
         output_tool_calls = []
         for tool_call in tool_calls:
@@ -116,10 +116,16 @@ class OpenAi(Model):
             "content": response["content"] or "",
             "tool_calls": output_tool_calls,
         }
-    
-    def get_tool_message(self, tool_result: str, tool_call_id: str) -> Dict[str, Any]:
-        return {
-            "role": "tool",
-            "content": tool_result,
-            "tool_call_id": tool_call_id,
-        }
+
+    def get_tool_message(self, tool_responses: List[Dict[str, Any]]) -> Any:
+        tool_results = []
+        for tool_response in tool_responses:
+            tool_results.append(
+                {
+                    "role": "tool",
+                    "content": tool_response["tool_result"],
+                    "tool_call_id": tool_response["id"],
+                }
+            )
+
+        return tool_results

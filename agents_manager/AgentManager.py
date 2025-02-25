@@ -2,7 +2,6 @@ import json
 from typing import List, Optional, Any
 
 from agents_manager.Agent import Agent
-from agents_manager.utils import populate_template
 
 
 class AgentManager:
@@ -67,11 +66,16 @@ class AgentManager:
         tool_calls = response['tool_calls']
         current_messages = agent.get_messages()
         current_messages.append(agent.get_model().get_assistant_message(response))
+        tool_responses = []
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
             id = output["id"]
             function_name = output["name"]
-            arguments = json.loads(output["arguments"])
+            if isinstance(output["arguments"], str):
+                arguments = json.loads(output["arguments"])
+            else:
+                arguments = output["arguments"]
+
             tools = agent.tools
             for tool in tools:
                 if tool.__name__ == function_name:
@@ -88,8 +92,17 @@ class AgentManager:
                         )
                         return tool_response_content
                     else:
-                        tool_response = agent.get_model().get_tool_message(str(tool_result), id)
-                    current_messages.append(tool_response)
+                        tool_responses.append({
+                            "id": id,
+                            "tool_result": str(tool_result),
+                        })
+
+        tool_response = agent.get_model().get_tool_message(tool_responses)
+        if isinstance(tool_response, dict):
+            current_messages.append(tool_response)
+        if isinstance(tool_response, list):
+            for response in tool_response:
+                current_messages.append(response)
 
         agent.set_messages(current_messages)
         response = agent.get_response()

@@ -1,7 +1,6 @@
-from typing import List, Dict, Any, Union, Optional
+from typing import Any, Optional
 
 from openai import OpenAI
-from openai.types.chat import ChatCompletion, ChatCompletionMessageToolCall
 
 from agents_manager.models import OpenAi
 

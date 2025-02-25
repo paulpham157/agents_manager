@@ -11,3 +11,4 @@ main.py
 dist/*
 
 *.egg-info/*
+main*
