@@ -10,10 +10,10 @@ from agents_manager.utils import populate_template
 class Anthropic(Model):
     def __init__(self, name: str, **kwargs: Any) -> None:
         """
-        Initialize the OpenAi model with a name and optional keyword arguments.
+        Initialize the Anthropic model with a name and optional keyword arguments.
 
         Args:
-            name (str): The name of the OpenAI model (e.g., "gpt-3.5-turbo").
+            name (str): The name of the Anthropic model (e.g., "claude-3-5-sonnet-20241022").
             **kwargs (Any): Additional arguments, including optional "api_key".
         """
         super().__init__(name, **kwargs)

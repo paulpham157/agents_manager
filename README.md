@@ -44,9 +44,6 @@ load_dotenv()
 model = OpenAi(name="gpt-4o-mini")
 
 
-# Define the OpenAi model
-# model = OpenAi(name="gpt-4o-mini")
-
 # Define the Grok model
 # model = Grok(name="grok-2-latest")
 
@@ -61,6 +58,9 @@ model = OpenAi(name="gpt-4o-mini")
 #         max_tokens= 1024,
 #         stream=True,
 #     )
+
+# Define the Llama model
+# model = Llama(name="llama3.1-70b")
 
 def multiply(a: int, b: int) -> int:
     """
