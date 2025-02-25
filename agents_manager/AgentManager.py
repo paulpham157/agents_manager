@@ -66,24 +66,10 @@ class AgentManager:
 
         tool_calls = response['tool_calls']
         current_messages = agent.get_messages()
-
-        output_tool_calls = []
+        current_messages.append(agent.get_model().get_assistant_message(response))
         for tool_call in tool_calls:
-            output = agent.get_model().get_parsed_tool_call_data(tool_call)
-            populated_data = populate_template(agent.get_model().get_tool_call_format(), output)
-            output_tool_calls.append(populated_data)
-
-        if output_tool_calls and len(output_tool_calls) > 0:
-            assistant_message = {
-                "role": "assistant",
-                "content": response["content"] or "",
-                "tool_calls": output_tool_calls,
-            }
-            current_messages.append(assistant_message)
-
-        # executing the functions and getting the response
-        for tool_call in tool_calls:
-            output = agent.get_model().get_parsed_tool_call_data(tool_call)
+            output = agent.get_model().get_keys_in_tool_output(tool_call)
+            id = output["id"]
             function_name = output["name"]
             arguments = json.loads(output["arguments"])
             tools = agent.tools
@@ -102,33 +88,9 @@ class AgentManager:
                         )
                         return tool_response_content
                     else:
-                        tool_response = {
-                                            "role": "tool",
-                                            "content": str(tool_result),
-                                        } | populate_template(agent.get_model().get_tool_call_id_format(), output)
+                        tool_response = agent.get_model().get_tool_message(str(tool_result), id)
                     current_messages.append(tool_response)
 
         agent.set_messages(current_messages)
         response = agent.get_response()
         return response["content"]
-
-    def run_agent_stream(self, name: str, user_input: Optional[str] = None) -> Any:
-        """
-        Run a specific agent's streaming response.
-
-        Args:
-            name (str): The name of the agent to run.
-            user_input (str, optional): Additional user input to append to messages.
-
-        Returns:
-            Any: The agent's streaming response.
-        """
-        agent = self.get_agent(name)
-        if agent is None:
-            raise ValueError(f"No agent found with name: {name}")
-
-        if user_input:
-            current_messages = agent.model.messages or []
-            agent.model.set_messages(current_messages + [{"role": "user", "content": user_input}])
-
-        return agent.get_response_stream()

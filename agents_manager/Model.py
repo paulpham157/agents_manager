@@ -68,35 +68,44 @@ class Model(ABC):
         Returns:
             Dict[str, Any]: The tool call format.
         """
-        pass
-
-
-    @abstractmethod
-    def get_tool_call_format(self) -> Dict[str, Any]:
-        """
-        Get the assistant message for prepending to the response.
-
-        Returns:
-            Dict[str, Any]: The assistant message.
-        """
-        pass
+        return {}
 
     @abstractmethod
-    def get_tool_call_id_format(self) -> Dict[str, Any]:
-        """
-        Get the tool message for appending to the response.
-
-        Returns:
-            Dict[str, Any]: The tool message.
-        """
-        pass
-
-    @abstractmethod
-    def get_parsed_tool_call_data(self, tool_call: Any)-> Dict[str, Any]:
+    def get_keys_in_tool_output(self, tool_call: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get the parsed tool call data.
+
+        Args:
+            tool_call (Dict[str, Any]): The tool call data.
 
         Returns:
             Dict[str, Any]: The parsed tool call data.
         """
-        pass
+        return {}
+
+    @abstractmethod
+    def get_assistant_message(self, response: Any) -> Dict[str, Any]:
+        """
+        Get the assistant message for prepending to the response.
+
+        Args:
+            response (Any): The response from the model.
+
+        Returns:
+            Dict[str, Any]: The assistant message.
+        """
+        return {}
+
+    @abstractmethod
+    def get_tool_message(self, tool_result: str, tool_call_id: str) -> Dict[str, Any]:
+        """
+        Get the tool message for appending to the response.
+
+        Args:
+            tool_result (str): The result of the tool call.
+            tool_call_id (str): The ID of the tool call.
+
+        Returns:
+            Dict[str, Any]: The tool message.
+        """
+        return {}
