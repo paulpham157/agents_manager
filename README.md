@@ -18,7 +18,7 @@ A lightweight Python package for managing multi-agent orchestration. Easily defi
 
 ```python
 
-from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic
+from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic, Llama
 
 ```
 
@@ -34,13 +34,13 @@ pip install agents-manager
 
 ```python
 from agents_manager import Agent, AgentManager
-from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic
+from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic, Llama
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Define the model
+# Define the OpenAi model
 model = OpenAi(name="gpt-4o-mini")
 
 
