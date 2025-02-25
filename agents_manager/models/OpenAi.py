@@ -4,6 +4,7 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletion
 
 from agents_manager.Model import Model
+from agents_manager.utils import populate_template
 
 
 class OpenAi(Model):
@@ -83,7 +84,8 @@ class OpenAi(Model):
             }
         }
 
-    def get_tool_call_format(self) -> Dict[str, Any]:
+    @staticmethod
+    def _get_tool_call_format() -> Dict[str, Any]:
         return {
             "id": "{id}",
             "type": "function",
@@ -93,14 +95,31 @@ class OpenAi(Model):
             }
         }
 
-    def get_tool_call_id_format(self) -> Dict[str, Any]:
-        return {
-            "tool_call_id": "{id}",
-        }
-
-    def get_parsed_tool_call_data(self, tool_call: Any) -> Dict[str, Any]:
+    def get_keys_in_tool_output(self, tool_call: Any) -> Dict[str, Any]:
         return {
             "id": tool_call.id,
             "name": tool_call.function.name,
             "arguments": tool_call.function.arguments
+        }
+
+    def get_assistant_message(self, response: Any):
+        
+        tool_calls = response["tool_calls"]
+        output_tool_calls = []
+        for tool_call in tool_calls:
+            output = self.get_keys_in_tool_output(tool_call)
+            populated_data = populate_template(self._get_tool_call_format(), output)
+            output_tool_calls.append(populated_data)
+
+        return {
+            "role": "assistant",
+            "content": response["content"] or "",
+            "tool_calls": output_tool_calls,
+        }
+    
+    def get_tool_message(self, tool_result: str, tool_call_id: str) -> Dict[str, Any]:
+        return {
+            "role": "tool",
+            "content": tool_result,
+            "tool_call_id": tool_call_id,
         }
