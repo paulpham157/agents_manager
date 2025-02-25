@@ -15,6 +15,7 @@ A lightweight Python package for managing multi-agent orchestration. Easily defi
 - Grok
 - DeepSeek
 - Anthropic
+- Llama
 
 ```python
 
