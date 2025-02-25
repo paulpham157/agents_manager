@@ -14,10 +14,11 @@ A lightweight Python package for managing multi-agent orchestration. Easily defi
 - OpenAI
 - Grok
 - DeepSeek
+- Anthropic
 
 ```python
 
-from agents_manager.models import OpenAi, Grok, DeepSeek
+from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic
 
 ```
 
@@ -33,7 +34,7 @@ pip install agents-manager
 
 ```python
 from agents_manager import Agent, AgentManager
-from agents_manager.models import OpenAi
+from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic
 
 from dotenv import load_dotenv
 
@@ -41,6 +42,25 @@ load_dotenv()
 
 # Define the model
 model = OpenAi(name="gpt-4o-mini")
+
+
+# Define the OpenAi model
+# model = OpenAi(name="gpt-4o-mini")
+
+# Define the Grok model
+# model = Grok(name="grok-2-latest")
+
+
+# Define the DeepSeek model
+# model = DeepSeek(name="deepseek-chat")
+
+
+# Define the Anthropic model
+# model = Anthropic(
+#         name="claude-3-5-sonnet-20241022",
+#         max_tokens= 1024,
+#         stream=True,
+#     )
 
 def multiply(a: int, b: int) -> int:
     """
