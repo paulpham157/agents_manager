@@ -1,5 +1,10 @@
 # Agents Manager
 
+[![PyPI version](https://badge.fury.io/py/agents-manager.svg)](https://badge.fury.io/py/agents-manager)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Python Version](https://img.shields.io/badge/python-3.7%2B-blue)
+[![Downloads](https://img.shields.io/pypi/dm/agents-manager.svg)](https://pypi.org/project/agents-manager/)
+
 A lightweight Python package for managing multi-agent orchestration. Easily define agents with custom instructions, tools, and models, and orchestrate their interactions seamlessly. Perfect for building modular, collaborative AI systems.
 
 ## Features
