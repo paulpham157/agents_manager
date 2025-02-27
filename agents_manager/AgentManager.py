@@ -39,7 +39,7 @@ class AgentManager:
                 return agent
         return None
 
-    def run_agent(self, name: str, user_input: Optional[str] = None) -> Any:
+    def run_agent(self, name: str, user_input: Optional[Any] = None) -> Any:
         """
         Run a specific agent's non-streaming response.
 
@@ -56,7 +56,15 @@ class AgentManager:
 
         if user_input:
             current_messages = agent.get_messages() or []
-            agent.set_messages(current_messages + [{"role": "user", "content": user_input}])
+            if isinstance(user_input, str):
+                user_input = {"role": "user", "content": user_input}
+                current_messages.append(user_input)
+            if isinstance(user_input, dict):
+                user_input = [user_input]
+                current_messages.extend(user_input)
+            if isinstance(user_input, list):
+                current_messages.extend(user_input)
+            agent.set_messages(current_messages)
 
         response = agent.get_response()
 

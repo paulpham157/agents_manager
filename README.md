@@ -109,7 +109,14 @@ agent1 = Agent(
 agent_manager = AgentManager()
 agent_manager.add_agent(agent1)
 
-response = agent_manager.run_agent("agent1", "What is 459 * 1?")
+response = agent_manager.run_agent("agent1", "What is 2 multiplied by 3?")
+
+# response = agent_manager.run_agent("agent1", {"role": "user", "content": "What is 2 multiplied by 3?"})
+# 
+# response = agent_manager.run_agent("agent1", [
+#     {"role": "user", "content": "What is 2 multiplied by 3?"},
+# ])
+
 
 print(response)
 ```
