@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Any, Union, Optional, Generator
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
@@ -24,6 +24,7 @@ class OpenAi(Model):
         self.client = OpenAI(
             api_key=kwargs.get("api_key"),  # type: Optional[str]
         )
+        self.has_tools_execute = False
 
     def generate_response(self) -> Dict:
         """
@@ -38,35 +39,53 @@ class OpenAi(Model):
         if "api_key" in self.kwargs:
             self.kwargs.pop("api_key")
 
+        self.kwargs["stream"] = False
         response = self.client.chat.completions.create(
             model=self.name,  # type: str
             messages=self.get_messages(),  # type: List[Dict[str, str]]
-            **self.kwargs  # type: Dict[str, Any]
+            **self.kwargs,  # type: Dict[str, Any]
         )
-        stream = self.kwargs.get("stream", False)
-        if stream:
-            final_tool_calls = {}
-            final_content = ""
-            for chunk in response:
-                for tool_call in chunk.choices[0].delta.tool_calls or []:
-                    index = tool_call.index
-                    if index not in final_tool_calls:
-                        final_tool_calls[index] = tool_call
-                    final_tool_calls[index].function.arguments += tool_call.function.arguments
+        message = response.choices[0].message
+        return {
+            "tool_calls": message.tool_calls,
+            "content": message.content,
+        }
 
-                if chunk.choices[0].delta.content is not None:
-                    final_content += chunk.choices[0].delta.content
+    def generate_stream_response(self) -> Generator[Dict, None, None]:
+        """
+        Generate a streaming response from the OpenAI model.
 
-            return {
-                "tool_calls": list(final_tool_calls.values()),
-                "content": final_content,
-            }
-        else:
-            message = response.choices[0].message
-            return {
-                "tool_calls": message.tool_calls,
-                "content": message.content,
-            }
+        Returns:
+            Union[ChatCompletion, str]: The raw ChatCompletion object if stream=False,
+                                        or a string if further processed.
+        """
+
+        # remove api_key from kwargs
+        if "api_key" in self.kwargs:
+            self.kwargs.pop("api_key")
+
+        self.kwargs["stream"] = True
+        response = self.client.chat.completions.create(
+            model=self.name,  # type: str
+            messages=self.get_messages(),  # type: List[Dict[str, str]]
+            **self.kwargs,  # type: Dict[str, Any]
+        )
+        final_tool_calls = {}
+        result = {
+            "tool_calls": [],
+            "content": "",
+        }
+        for chunk in response:
+            for tool_call in chunk.choices[0].delta.tool_calls or []:
+                index = tool_call.index
+                if index not in final_tool_calls:
+                    final_tool_calls[index] = tool_call
+                final_tool_calls[index].function.arguments += tool_call.function.arguments
+                result["tool_calls"] = final_tool_calls
+            if chunk.choices[0].delta.content is not None:
+                result["content"] = chunk.choices[0].delta.content
+            yield result
+        return
 
     def get_tool_format(self) -> Dict[str, Any]:
         return {

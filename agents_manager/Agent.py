@@ -1,4 +1,4 @@
-from typing import List, Any, Optional, Callable, Dict
+from typing import List, Any, Optional, Callable, Dict, Union, Generator
 
 from agents_manager.Model import Model
 from agents_manager.utils import function_to_json
@@ -120,7 +120,7 @@ class Agent:
             "tool_choice": function_to_json(tool_choice)
         })
 
-    def get_response(self) -> Any:
+    def get_response(self) -> Dict:
         """
         Generate a non-streaming response from the model.
 
@@ -131,13 +131,13 @@ class Agent:
             raise ValueError("Messages must be set before generating a response")
         return self.model.generate_response()
 
-    def get_response_stream(self) -> Any:
+    def get_stream_response(self) -> Generator[Dict, None, None]:
         """
-        Generate a streaming response from the model.
+        Generate a non-streaming response from the model.
 
         Returns:
-            Any: The streaming response, type depends on the model's implementation.
+            Any: The response, type depends on the model's implementation.
         """
         if not hasattr(self.model, 'messages') or self.model.messages is None:
-            raise ValueError("Messages must be set before generating a stream")
-        return self.model.generate_response_stream()
+            raise ValueError("Messages must be set before generating a response")
+        yield from self.model.generate_stream_response()

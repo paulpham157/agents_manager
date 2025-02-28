@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, Generator
 
 
 class Model(ABC):
@@ -50,7 +50,17 @@ class Model(ABC):
         self.kwargs = {**self.kwargs, **kwargs}
 
     @abstractmethod
-    def generate_response(self) -> Any:
+    def generate_response(self) -> Dict:
+        """
+        Generate a non-streaming response based on the model's implementation.
+
+        Returns:
+            Any: The response, type depends on the concrete implementation.
+        """
+        pass
+
+    @abstractmethod
+    def generate_stream_response(self) -> Generator[Dict, None, None]:
         """
         Generate a non-streaming response based on the model's implementation.
 

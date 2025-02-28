@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Generator, Dict
 
 from agents_manager.Agent import Agent
 
@@ -20,39 +20,35 @@ class AgentManager:
         """
         if not isinstance(agent, Agent):
             raise ValueError("Only Agent instances can be added")
-        self.agents.append(agent)
-        agent.set_messages([{"role": "assistant", "content": agent.instruction}])
-        agent.set_tools(agent.tools)
+        _, existing_agent = self.get_agent(agent.name)
+        if not existing_agent:
+            self.agents.append(agent)
 
-    def get_agent(self, name: str) -> Optional[Agent]:
+    def get_agent(self, name: str) -> tuple[Optional[int], Optional[Agent]]:
         """
         Retrieve an agent by name.
-
         Args:
             name (str): The name of the agent to find.
-
         Returns:
-            Optional[Agent]: The agent if found, else None.
+            tuple[Optional[int], Optional[Agent]]: A tuple containing the index and agent if found, else (None, None).
         """
-        for agent in self.agents:
+
+        for _, agent in enumerate(self.agents):
             if agent.name == name:
-                return agent
-        return None
+                return _, agent
+        return None, None
 
-    def run_agent(self, name: str, user_input: Optional[Any] = None) -> Any:
-        """
-        Run a specific agent's non-streaming response.
+    def _initialize_user_input(self, name: str,
+                               user_input: Optional[Any] = None) -> \
+            tuple[Optional[int], Optional[Agent]]:
 
-        Args:
-            name (str): The name of the agent to run.
-            user_input (str, optional): Additional user input to append to messages.
+        _, agent = self.get_agent(name)
 
-        Returns:
-            Any: The agent's response.
-        """
-        agent = self.get_agent(name)
         if agent is None:
             raise ValueError(f"No agent found with name: {name}")
+
+        agent.set_messages([{"role": "assistant", "content": agent.instruction}])
+        agent.set_tools(agent.tools)
 
         if user_input:
             current_messages = agent.get_messages() or []
@@ -66,8 +62,77 @@ class AgentManager:
                 current_messages.extend(user_input)
             agent.set_messages(current_messages)
 
-        response = agent.get_response()
+        return _, agent
 
+    def _prepare_final_messages(self, agent: Agent, current_messages: list, tool_responses: list):
+        tool_response = agent.get_model().get_tool_message(tool_responses)
+        if isinstance(tool_response, dict):
+            current_messages.append(tool_response)
+        if isinstance(tool_response, list):
+            current_messages.extend(tool_response)
+        agent.set_messages(current_messages)
+
+    def run_agent(self, name: str, user_input: Optional[Any] = None) -> Dict:
+        """
+        Run a specific agent's non-streaming response.
+
+        Args:
+            name (str): The name of the agent to run.
+            user_input (str, optional): Additional user input to append to messages.
+
+        Returns:
+            Any: The agent's response.
+        """
+        _, agent = self._initialize_user_input(name, user_input)
+        response = agent.get_response()
+        if not response['tool_calls']:
+            return response
+
+        tool_calls = response['tool_calls']
+        current_messages = agent.get_messages()
+        current_messages.append(agent.get_model().get_assistant_message(response))
+        tool_responses = []
+        for tool_call in tool_calls:
+            output = agent.get_model().get_keys_in_tool_output(tool_call)
+            id, function_name = output["id"], output["name"]
+            arguments = json.loads(output["arguments"]) if isinstance(output["arguments"], str) else output["arguments"]
+
+            for tool in agent.tools:
+                if tool.__name__ == function_name:
+                    tool_result = tool(**arguments)
+
+                    if isinstance(tool_result, Agent):
+                        existing_agent = self.get_agent(tool_result.name)[1]
+                        if not existing_agent:
+                            self.add_agent(tool_result)
+                        nested_response = self.run_agent(tool_result.name, user_input)
+                        return getattr(nested_response, "content", str(nested_response))
+
+                    tool_responses.append({"id": id, "tool_result": str(tool_result)})
+
+        self._prepare_final_messages(agent, current_messages, tool_responses)
+        response = agent.get_response()
+        if not response['tool_calls']:
+            return response
+
+    def run_agent_stream(self, name: str, user_input: Optional[Any] = None) -> Generator[Dict, None, None]:
+        """
+        Run a specific agent's streaming response.
+
+        Args:
+            name (str): The name of the agent to run.
+            user_input (str, optional): Additional user input to append to messages.
+
+        Returns:
+            Any: The agent's response.
+        """
+        position, agent = self._initialize_user_input(name, user_input)
+        initial_tools = agent.get_tools()
+        if not initial_tools and position == 0:
+            yield from agent.get_stream_response()
+            return
+
+        response = agent.get_response()
         if not response['tool_calls']:
             return response["content"]
 
@@ -77,41 +142,18 @@ class AgentManager:
         tool_responses = []
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
-            id = output["id"]
-            function_name = output["name"]
-            if isinstance(output["arguments"], str):
-                arguments = json.loads(output["arguments"])
-            else:
-                arguments = output["arguments"]
+            id, function_name = output["id"], output["name"]
+            arguments = json.loads(output["arguments"]) if isinstance(output["arguments"], str) else output["arguments"]
 
-            tools = agent.tools
-            for tool in tools:
+            for tool in agent.tools:
                 if tool.__name__ == function_name:
                     tool_result = tool(**arguments)
                     if isinstance(tool_result, Agent):
-                        self.add_agent(tool_result)
-                        nested_response = self.run_agent(tool_result.name,
-                                                         user_input
-                                                         )
-                        tool_response_content = (
-                            nested_response.content
-                            if hasattr(nested_response, "content")
-                            else str(nested_response)
-                        )
-                        return tool_response_content
-                    else:
-                        tool_responses.append({
-                            "id": id,
-                            "tool_result": str(tool_result),
-                        })
-
-        tool_response = agent.get_model().get_tool_message(tool_responses)
-        if isinstance(tool_response, dict):
-            current_messages.append(tool_response)
-        if isinstance(tool_response, list):
-            for response in tool_response:
-                current_messages.append(response)
-
-        agent.set_messages(current_messages)
-        response = agent.get_response()
-        return response["content"]
+                        if not self.get_agent(tool_result.name)[1]:
+                            self.add_agent(tool_result)
+                        yield from self.run_agent_stream(tool_result.name, user_input)
+                        return
+                    tool_responses.append({"id": id, "tool_result": str(tool_result)})
+        self._prepare_final_messages(agent, current_messages, tool_responses)
+        yield from agent.get_stream_response()
+        return

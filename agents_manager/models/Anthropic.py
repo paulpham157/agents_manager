@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Any, Union, Optional, Generator
 
 from anthropic import Anthropic as Ap
 
@@ -38,30 +38,69 @@ class Anthropic(Model):
         if "api_key" in self.kwargs:
             self.kwargs.pop("api_key")
 
-        needs_stream = self.kwargs.get("stream", False)
-        kwargs = self.kwargs.copy()
-        kwargs.pop("stream", None)
-        if needs_stream:
-            with self.client.messages.stream(
-                    model=self.name,
-                    messages=self.get_messages(),
-                    **kwargs
-            ) as stream:
-                message = self.parse_stream(stream)
-            return {
-                "tool_calls": self.extract_content(message, "tool_use"),
-                "content": self.extract_content(message, "text")[0].text,
-            }
-        else:
-            message = self.client.messages.create(
+        self.kwargs["stream"] = False
+        message = self.client.messages.create(
+            model=self.name,
+            messages=self.get_messages(),
+            **self.kwargs
+        )
+        return {
+            "tool_calls": self.extract_content(message, "tool_use"),
+            "content": self.extract_content(message, "text")[0].text,
+        }
+
+    def generate_stream_response(self) -> Generator[Dict, None, None]:
+        """
+        Generate a streaming response from the Anthropic model with tool_calls and content.
+        Yields dictionaries containing accumulated tool_calls and content.
+        """
+        # remove api_key from kwargs
+        if "api_key" in self.kwargs:
+            self.kwargs.pop("api_key")
+
+        self.kwargs.pop("stream")
+        with self.client.messages.stream(
                 model=self.name,
                 messages=self.get_messages(),
-                **kwargs
-            )
-            return {
-                "tool_calls": self.extract_content(message, "tool_use"),
-                "content": self.extract_content(message, "text")[0].text,
+                **self.kwargs
+        ) as stream:
+            current_content_blocks = {}
+            accumulated_json = {}
+            result = {
+                "tool_calls": [],
+                "content": ""
             }
+
+            current_tool = None  # Track tool call metadata, but don't accumulate input
+
+            for event in stream:
+                result = {"content": None, "tool_calls": None}  # Fresh result dict each iteration
+
+                # Handle text tokens as they arrive
+                if event.type == "content_block_delta" and event.delta.type == "text_delta":
+                    result["content"] = event.delta.text  # Yield only the current text token
+
+                # Handle tool call start
+                elif event.type == "content_block_start" and event.content_block.type == "tool_use":
+                    current_tool = {"id": event.content_block.id, "name": event.content_block.name, "input": None}
+                    result["tool_calls"] = current_tool  # Yield tool metadata without input yet
+
+                # Handle tool call input tokens
+                elif event.type == "content_block_delta" and event.delta.type == "input_json_delta" and current_tool:
+                    # Yield the raw partial_json token as it arrives
+                    result["tool_calls"] = {"id": current_tool["id"], "name": current_tool["name"],
+                                            "input": event.delta.partial_json}
+
+                # Handle block completion
+                elif event.type == "content_block_stop":
+                    if current_tool:
+                        # No input to finalize since we're not appending; just clear the tool
+                        current_tool = None
+                    # No content to yield here since we're not accumulating
+
+                # Yield the result with the current token (if any)
+                if result["content"] or result["tool_calls"]:
+                    yield result
 
     @staticmethod
     def parse_stream(stream):
