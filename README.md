@@ -115,6 +115,7 @@ agent_manager = AgentManager()
 agent_manager.add_agent(agent1)
 
 response = agent_manager.run_agent("agent1", "What is 2 multiplied by 3?")
+print(response["content"])
 
 # response = agent_manager.run_agent("agent1", {"role": "user", "content": "What is 2 multiplied by 3?"})
 # 
@@ -123,7 +124,20 @@ response = agent_manager.run_agent("agent1", "What is 2 multiplied by 3?")
 # ])
 
 
-print(response)
+response_stream = agent_manager.run_agent_stream("agent1", "What is 2 multiplied by 3?")
+for chunk in response_stream:
+    print(chunk["content"], end="")
+
+# response_stream = agent_manager.run_agent_stream("agent1", {"role": "user", "content": "What is 2 multiplied by 3?"})
+# for chunk in response_stream:
+#     print(chunk["content"], end="")
+
+# response_stream = agent_manager.run_agent_stream("agent1", [
+#     {"role": "user", "content": "What is 2 multiplied by 3?"},
+# ])
+# for chunk in response_stream:
+#     print(chunk["content"], end="")
+
 ```
 
 ## How It Works

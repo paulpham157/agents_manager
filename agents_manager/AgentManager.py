@@ -100,13 +100,10 @@ class AgentManager:
             for tool in agent.tools:
                 if tool.__name__ == function_name:
                     tool_result = tool(**arguments)
-
                     if isinstance(tool_result, Agent):
-                        existing_agent = self.get_agent(tool_result.name)[1]
-                        if not existing_agent:
+                        if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
-                        nested_response = self.run_agent(tool_result.name, user_input)
-                        return getattr(nested_response, "content", str(nested_response))
+                        return self.run_agent(tool_result.name, user_input)
 
                     tool_responses.append({"id": id, "tool_result": str(tool_result)})
 
