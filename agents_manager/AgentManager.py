@@ -47,21 +47,10 @@ class AgentManager:
         if agent is None:
             raise ValueError(f"No agent found with name: {name}")
 
-        agent.set_messages([{"role": "assistant", "content": agent.instruction}])
+        agent.set_system_message(agent.instruction)
         agent.set_tools(agent.tools)
-
         if user_input:
-            current_messages = agent.get_messages() or []
-            if isinstance(user_input, str):
-                user_input = {"role": "user", "content": user_input}
-                current_messages.append(user_input)
-            if isinstance(user_input, dict):
-                user_input = [user_input]
-                current_messages.extend(user_input)
-            if isinstance(user_input, list):
-                current_messages.extend(user_input)
-            agent.set_messages(current_messages)
-
+            agent.set_user_message(user_input)
         return _, agent
 
     def _prepare_final_messages(self, agent: Agent, current_messages: list, tool_responses: list):
@@ -90,7 +79,11 @@ class AgentManager:
 
         tool_calls = response['tool_calls']
         current_messages = agent.get_messages()
-        current_messages.append(agent.get_model().get_assistant_message(response))
+        assistant_message = agent.get_model().get_assistant_message(response)
+        if isinstance(assistant_message, dict):
+            current_messages.append(assistant_message)
+        if isinstance(assistant_message, list):
+            current_messages.extend(assistant_message)
         tool_responses = []
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
@@ -105,7 +98,7 @@ class AgentManager:
                             self.add_agent(tool_result)
                         return self.run_agent(tool_result.name, user_input)
 
-                    tool_responses.append({"id": id, "tool_result": str(tool_result)})
+                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
         response = agent.get_response()
@@ -135,7 +128,11 @@ class AgentManager:
 
         tool_calls = response['tool_calls']
         current_messages = agent.get_messages()
-        current_messages.append(agent.get_model().get_assistant_message(response))
+        assistant_message = agent.get_model().get_assistant_message(response)
+        if isinstance(assistant_message, dict):
+            current_messages.append(assistant_message)
+        if isinstance(assistant_message, list):
+            current_messages.extend(assistant_message)
         tool_responses = []
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
@@ -150,7 +147,7 @@ class AgentManager:
                             self.add_agent(tool_result)
                         yield from self.run_agent_stream(tool_result.name, user_input)
                         return
-                    tool_responses.append({"id": id, "tool_result": str(tool_result)})
+                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
         self._prepare_final_messages(agent, current_messages, tool_responses)
         yield from agent.get_stream_response()
         return

@@ -21,12 +21,7 @@ A lightweight Python package for managing multi-agent orchestration. Easily defi
 - DeepSeek
 - Anthropic
 - Llama
-
-```python
-
-from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic, Llama
-
-```
+- Genai
 
 ## Installation
 
@@ -40,33 +35,24 @@ pip install agents-manager
 
 ```python
 from agents_manager import Agent, AgentManager
-from agents_manager.models import OpenAi, Grok, DeepSeek, Anthropic, Llama
+from agents_manager.models import OpenAi, Anthropic, Genai
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Define the OpenAi model
-model = OpenAi(name="gpt-4o-mini")
+openaiModel = OpenAi(name="gpt-4o-mini")
 
+#Define the Anthropic model
+anthropicModel = Anthropic(
+        name="claude-3-5-sonnet-20241022",
+        max_tokens= 1024,
+        stream=True,
+    )
 
-# Define the Grok model
-# model = Grok(name="grok-2-latest")
-
-
-# Define the DeepSeek model
-# model = DeepSeek(name="deepseek-chat")
-
-
-# Define the Anthropic model
-# model = Anthropic(
-#         name="claude-3-5-sonnet-20241022",
-#         max_tokens= 1024,
-#         stream=True,
-#     )
-
-# Define the Llama model
-# model = Llama(name="llama3.1-70b")
+#Define the Genai model
+genaiModel = Genai(name="gemini-2.0-flash-001")
 
 def multiply(a: int, b: int) -> int:
     """
@@ -84,7 +70,7 @@ def transfer_to_agent_3_for_math_calculation() -> Agent:
 
 def transfer_to_agent_2_for_math_calculation() -> Agent:
     """
-    Transfer to agent 2 for math calculation.
+    Transfer to agent 2 for math calculation.    
     """
     return agent2
 
@@ -92,21 +78,21 @@ def transfer_to_agent_2_for_math_calculation() -> Agent:
 agent3 = Agent(
     name="agent3",
     instruction="You are a maths teacher, explain properly how you calculated the answer.",
-    model=model,
+    model=genaiModel,
     tools=[multiply]
 )
 
 agent2 = Agent(
     name="agent2",
     instruction="You are a maths calculator bro",
-    model=model,
+    model=anthropicModel,
     tools=[transfer_to_agent_3_for_math_calculation]
 )
 
 agent1 = Agent(
     name="agent1",
     instruction="You are a helpful assistant",
-    model=model,
+    model=openaiModel,
     tools=[transfer_to_agent_2_for_math_calculation]
 )
 
@@ -116,29 +102,62 @@ agent_manager.add_agent(agent1)
 
 response = agent_manager.run_agent("agent1", "What is 2 multiplied by 3?")
 print(response["content"])
+```
 
-# response = agent_manager.run_agent("agent1", {"role": "user", "content": "What is 2 multiplied by 3?"})
-# 
-# response = agent_manager.run_agent("agent1", [
-#     {"role": "user", "content": "What is 2 multiplied by 3?"},
-# ])
-
-
-response_stream = agent_manager.run_agent_stream("agent1", "What is 2 multiplied by 3?")
+You can run for stream response as well.
+```python
+response_stream = agent_manager.run_agent_stream("agent1", [
+    {"role": "user", "content": "What is 2 multiplied by 3?"},
+])
 for chunk in response_stream:
     print(chunk["content"], end="")
+```
 
-# response_stream = agent_manager.run_agent_stream("agent1", {"role": "user", "content": "What is 2 multiplied by 3?"})
-# for chunk in response_stream:
-#     print(chunk["content"], end="")
 
-# response_stream = agent_manager.run_agent_stream("agent1", [
-#     {"role": "user", "content": "What is 2 multiplied by 3?"},
-# ])
-# for chunk in response_stream:
-#     print(chunk["content"], end="")
+You can also run the agent with a dictionary as the input content.
+```python
+
+response = agent_manager.run_agent("agent1", {"role": "user", "content": "What is 2 multiplied by 3?"})
 
 ```
+
+You can also run the agent with a list of history of messages as the input.
+```python
+response = agent_manager.run_agent("agent1", [
+    {"role": "user", "content": "What is 2 multiplied by 3?"},
+])
+```
+
+
+
+## More models
+```python
+from agents_manager.models import Grok, DeepSeek, Llama
+
+#Define the Grok model
+modelGrok = Grok(name="grok-2-latest")
+
+
+#Define the DeepSeek model
+modelDeepSeek = DeepSeek(name="deepseek-chat")
+
+
+#Define the Llama model
+modelLlama = Llama(name="llama3.1-70b")
+
+```
+
+
+## Troubleshooting
+
+While using Genai model with functions, if you get the following error:
+
+```python
+google.genai.errors.ClientError: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.tools[0].function_declarations[0].parameters.properties: should be non-empty for OBJECT type\n', 'status': 'INVALID_ARGUMENT'}}
+
+```
+It is because google genai does not support functions without parameters. You can fix this by providing a dummy parameter. Please let me know if you have a better solution for this.
+
 
 ## How It Works
 
@@ -146,6 +165,9 @@ for chunk in response_stream:
 2. **Assign Tools**: Agents can be assigned tools (functions) to perform tasks.
 3. **Create an Agent Manager**: The `AgentManager` manages the orchestration of agents.
 4. **Run an Agent**: Start an agent to process a request and interact with other agents as needed.
+
+
+
 
 ## Use Cases
 
