@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union, Generator
+from typing import List, Dict, Any, Optional, Generator, Callable
 
 
 class Model(ABC):
@@ -57,7 +57,10 @@ class Model(ABC):
         Returns:
             Any: The response, type depends on the concrete implementation.
         """
-        pass
+        return {
+            "tool_calls": [],
+            "content": "",
+        }
 
     @abstractmethod
     def generate_stream_response(self) -> Generator[Dict, None, None]:
@@ -67,7 +70,10 @@ class Model(ABC):
         Returns:
             Any: The response, type depends on the concrete implementation.
         """
-        pass
+        yield {
+            "tool_calls": [],
+            "content": "",
+        }
 
     @abstractmethod
     def get_tool_format(self) -> Dict[str, Any]:
@@ -116,3 +122,33 @@ class Model(ABC):
             Dict[str, Any]: The tool message.
         """
         return {}
+
+    @abstractmethod
+    def set_system_message(self, message: str) -> None:
+        """
+        Set the system message for the model.
+
+        Args:
+            message (str): The system message.
+        """
+        pass
+
+    @abstractmethod
+    def set_user_message(self, message: str) -> None:
+        """
+        Set the user message for the model.
+
+        Args:
+            message (str): The user message.
+        """
+        pass
+
+    @abstractmethod
+    def set_tools(self, tools: List[Callable]) -> None:
+        """
+        Set the tools for the model.
+
+        Args:
+            tools (List[Callable]): The tools.
+        """
+        pass

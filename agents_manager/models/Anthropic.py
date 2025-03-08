@@ -1,10 +1,10 @@
 import json
-from typing import List, Dict, Any, Union, Optional, Generator
+from typing import List, Dict, Any, Union, Optional, Generator, Callable
 
 from anthropic import Anthropic as Ap
 
 from agents_manager.Model import Model
-from agents_manager.utils import populate_template
+from agents_manager.utils import populate_template, function_to_json
 
 
 class Anthropic(Model):
@@ -21,6 +21,7 @@ class Anthropic(Model):
         if name is None:
             raise ValueError("A valid  OpenAI model name is required")
 
+        self.instruction = ""
         self.client = Ap(
             api_key=kwargs.get("api_key"),  # type: Optional[str]
         )
@@ -41,6 +42,7 @@ class Anthropic(Model):
         self.kwargs["stream"] = False
         message = self.client.messages.create(
             model=self.name,
+            system=self.instruction,
             messages=self.get_messages(),
             **self.kwargs
         )
@@ -61,6 +63,7 @@ class Anthropic(Model):
         self.kwargs.pop("stream")
         with self.client.messages.stream(
                 model=self.name,
+                system=self.instruction,
                 messages=self.get_messages(),
                 **self.kwargs
         ) as stream:
@@ -239,3 +242,27 @@ class Anthropic(Model):
             "role": "user",
             "content": tool_results
         }
+
+    def set_system_message(self, message: str) -> None:
+        self.instruction = message
+
+    def set_user_message(self, message: str) -> None:
+        current_messages = self.get_messages() or []
+        if isinstance(message, str):
+            user_input = {"role": "user", "content": message}
+            current_messages.append(user_input)
+        if isinstance(message, dict):
+            user_input = [message]
+            current_messages.extend(user_input)
+        if isinstance(message, list):
+            current_messages.extend(message)
+        self.set_messages(current_messages)
+
+    def set_tools(self, tools: List[Callable]) -> None:
+        json_tools: List[Dict[str, Any]] = []
+        for tool in tools:
+            if isinstance(tool, Callable):
+                json_tools.append(function_to_json(tool, self.get_tool_format()))
+        self.kwargs.update({
+            "tools": json_tools
+        })

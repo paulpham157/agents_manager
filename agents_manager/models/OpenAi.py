@@ -1,10 +1,10 @@
-from typing import List, Dict, Any, Union, Optional, Generator
+from typing import List, Dict, Any, Union, Optional, Generator, Callable
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
 
 from agents_manager.Model import Model
-from agents_manager.utils import populate_template
+from agents_manager.utils import populate_template, function_to_json
 
 
 class OpenAi(Model):
@@ -148,3 +148,31 @@ class OpenAi(Model):
             )
 
         return tool_results
+
+    def set_system_message(self, message: str) -> None:
+        self.set_messages([{
+            "role": "system",
+            "content": message,
+        }])
+
+    def set_user_message(self, message: str) -> None:
+        current_messages = self.get_messages() or []
+        if isinstance(message, str):
+            user_input = {"role": "user", "content": message}
+            current_messages.append(user_input)
+        if isinstance(message, dict):
+            user_input = [message]
+            current_messages.extend(user_input)
+        if isinstance(message, list):
+            current_messages.extend(message)
+        self.set_messages(current_messages)
+
+    def set_tools(self, tools: List[Callable]) -> None:
+
+        json_tools: List[Dict[str, Any]] = []
+        for tool in tools:
+            if isinstance(tool, Callable):
+                json_tools.append(function_to_json(tool, self.get_tool_format()))
+        self.kwargs.update({
+            "tools": json_tools
+        })

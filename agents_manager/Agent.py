@@ -71,13 +71,7 @@ class Agent:
             tools (List[Callable]): List of callable tools to be used by the agent.
         """
         self.tools = tools
-        json_tools: List[Dict[str, Any]] = []
-        for tool in tools:
-            if isinstance(tool, Callable):
-                json_tools.append(function_to_json(tool, self.model.get_tool_format()))
-        self.model.set_kwargs({
-            "tools": json_tools
-        })
+        self.model.set_tools(tools)
 
     def get_tools(self) -> List[Callable]:
         """
@@ -141,3 +135,21 @@ class Agent:
         if not hasattr(self.model, 'messages') or self.model.messages is None:
             raise ValueError("Messages must be set before generating a response")
         yield from self.model.generate_stream_response()
+
+    def set_system_message(self, message: str) -> None:
+        """
+        Set the system message for the agent.
+
+        Args:
+            message (str): The system message.
+        """
+        self.model.set_system_message(message)
+
+    def set_user_message(self, message: str) -> None:
+        """
+        Set the user message for the agent.
+
+        Args:
+            message (str): The user message.
+        """
+        self.model.set_user_message(message)
