@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agents-manager"
-version = "1.1.8"
+version = "1.1.9"
 authors = [
   { name = "Naroju Sandesh", email = "sandeshnaroju@gmail.com" },
 ]
@@ -12,6 +12,7 @@ description = "A lightweight Python package for managing multi-agent orchestrati
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
+  "docker>=7.1.0",
   "google-genai>=1.4.0",
   "anthropic>=0.47.1",
   "openai>=1.0.0",
