@@ -11,7 +11,7 @@ A lightweight Python package for managing multi-agent orchestration. Easily defi
 
 - Define agents with specific roles and instructions
 - Assign models to agents (e.g., OpenAI models)
-- Equip agents with tools for performing tasks
+- Equip agents with tools and containers for performing tasks
 - Seamlessly orchestrate interactions between multiple agents
 
 ## Supported Models
@@ -72,6 +72,7 @@ def transfer_to_agent_2_for_math_calculation() -> Agent:
     """
     Transfer to agent 2 for math calculation.    
     """
+    agent2.set_instruction("You can change the instruction here")
     return agent2
 
 # Define agents
@@ -102,6 +103,55 @@ agent_manager.add_agent(agent1)
 
 response = agent_manager.run_agent("agent1", "What is 2 multiplied by 3?")
 print(response["content"])
+```
+
+You can also pass container as tool to the agent.
+```python
+from agents_manager import Agent, AgentManager, Container
+
+...
+
+agent4 = Agent(
+    name="agent4",
+    instruction="You are a helpful assistant",
+    model=model,
+    tools=[Container(
+        name="hello",
+        description="A simple hello world container",
+        image="hello-world:latest",
+    )]
+)
+```
+
+You can also pass the result of the container to the next agent with result variable.
+```python
+from agents_manager import Agent, Container
+
+...
+
+agent5 = Agent(
+    name="agent1",
+    instruction="You are a helpful assistant",
+    model=model,
+    tools=[Container(
+        name="processing",
+        description="Container to do some processing...",
+        image="docker/xxxx:latest",
+        environment=[
+            {"name": "input1", "type": "integer"},
+            {"name": "input2", "type": "integer"}
+        ],
+        authenticate={
+            "username": "xxxxx",
+            "password": "xxxxx",
+            "registry": "xxxxx"
+        },
+        return_to={
+            "agent": agent6,
+            "instruction": "The result is: {result}"
+        },
+    )]
+)
 ```
 
 You can run for stream response as well.
@@ -162,7 +212,7 @@ It is because google genai does not support functions without parameters. You ca
 ## How It Works
 
 1. **Define Agents**: Each agent has a name, a specific role (instruction), and a model.
-2. **Assign Tools**: Agents can be assigned tools (functions) to perform tasks.
+2. **Assign Tools**: Agents can be assigned tools (functions and containers) to perform tasks.
 3. **Create an Agent Manager**: The `AgentManager` manages the orchestration of agents.
 4. **Run an Agent**: Start an agent to process a request and interact with other agents as needed.
 

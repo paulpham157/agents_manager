@@ -3,8 +3,9 @@ from typing import List, Dict, Any, Union, Optional, Generator, Callable
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
 
+from agents_manager.Container import Container
 from agents_manager.Model import Model
-from agents_manager.utils import populate_template, function_to_json
+from agents_manager.utils import populate_template, function_to_json, container_to_json
 
 
 class OpenAi(Model):
@@ -173,6 +174,8 @@ class OpenAi(Model):
         for tool in tools:
             if isinstance(tool, Callable):
                 json_tools.append(function_to_json(tool, self.get_tool_format()))
+            if isinstance(tool, Container):
+                json_tools.append(container_to_json(tool, self.get_tool_format()))
         self.kwargs.update({
             "tools": json_tools
         })

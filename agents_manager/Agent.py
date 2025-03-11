@@ -1,5 +1,6 @@
-from typing import List, Any, Optional, Callable, Dict, Union, Generator
+from typing import List, Optional, Callable, Dict, Union, Generator
 
+from agents_manager.Container import Container
 from agents_manager.Model import Model
 from agents_manager.utils import function_to_json
 
@@ -8,20 +9,21 @@ class Agent:
     def __init__(self, name: Optional[str] = None,
                  instruction: Optional[str] = None,
                  model: Optional[Model] = None,
-                 tools: Optional[List[Callable]] = None,
+                 tools: Optional[List[Union[Callable, Container]]] = None,
                  tool_choice: Optional[Callable] = None) -> None:
         """
-        Initialize the Agent with a name, instruction, tools, and a model instance.
-
+        Initialize the Agent with a name, instruction, model, tools, and tool choice function.
         Args:
-            name (str, optional): The name of the agent.
-            instruction (str, optional): The system instruction for the agent.
-            tools (List[Callable], optional): List of callable tools the agent can use.
-            model (Model, optional): An instance of a concrete Model subclass.
+            name    :
+            instruction:
+            model:
+            tools:
+            tool_choice:
         """
+
         self.name: Optional[str] = name
         self.instruction: str = instruction or ""
-        self.tools: List[Callable] = tools or []
+        self.tools: List[Union[Callable, Container]] = tools or []
         if model is None or not isinstance(model, Model):
             raise ValueError("A valid instance of a Model subclass is required")
         self.model: Model = model

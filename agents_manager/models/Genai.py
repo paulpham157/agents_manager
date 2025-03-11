@@ -4,8 +4,9 @@ from google import genai
 from google.genai import types
 from openai.types.chat import ChatCompletion
 
+from agents_manager.Container import Container
 from agents_manager.Model import Model
-from agents_manager.utils import populate_template, function_to_json
+from agents_manager.utils import function_to_json, container_to_json
 
 
 class Genai(Model):
@@ -287,23 +288,19 @@ class Genai(Model):
         return self._content_to_json(response["candidates"][0].content)
 
     def get_tool_message(self, tool_responses: List[Dict[str, Any]]) -> Any:
-        tool_results = []
+        tool_results = {}
+        content = []
         for tool_response in tool_responses:
-            tool_results.append(
-                {
-                    "role": "tool",
-                    "content": [
-                        {
+            content.append({
                             "function_response": {
                                 "name": tool_response["name"],
                                 "response": {
                                     "result": tool_response["tool_result"],
                                 },
                             }
-                        }
-                    ],
-                }
-            )
+                        })
+        tool_results["role"] = "tool"
+        tool_results["content"] = content
 
         return tool_results
 
@@ -327,6 +324,8 @@ class Genai(Model):
         for tool in tools:
             if isinstance(tool, Callable):
                 json_tools.append(function_to_json(tool, self.get_tool_format()))
+            if isinstance(tool, Container):
+                json_tools.append(container_to_json(tool, self.get_tool_format()))
         self.kwargs.update({
             "tools": json_tools
         })
