@@ -105,6 +105,15 @@ response = agent_manager.run_agent("agent1", "What is 2 multiplied by 3?")
 print(response["content"])
 ```
 
+You can run for stream response as well.
+```python
+response_stream = agent_manager.run_agent_stream("agent1", [
+    {"role": "user", "content": "What is 2 multiplied by 3?"},
+])
+for chunk in response_stream:
+    print(chunk["content"], end="")
+```
+
 You can also pass container as tool to the agent.
 ```python
 from agents_manager import Agent, AgentManager, Container
@@ -152,15 +161,6 @@ agent5 = Agent(
         },
     )]
 )
-```
-
-You can run for stream response as well.
-```python
-response_stream = agent_manager.run_agent_stream("agent1", [
-    {"role": "user", "content": "What is 2 multiplied by 3?"},
-])
-for chunk in response_stream:
-    print(chunk["content"], end="")
 ```
 
 
