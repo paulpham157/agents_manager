@@ -1,6 +1,7 @@
 import json
-from typing import List, Optional, Any, Generator, Dict
+from typing import List, Optional, Any, Generator, Dict, Callable
 
+from agents_manager.Container import Container
 from agents_manager.Agent import Agent
 
 
@@ -53,7 +54,8 @@ class AgentManager:
             agent.set_user_message(user_input)
         return _, agent
 
-    def _prepare_final_messages(self, agent: Agent, current_messages: list, tool_responses: list):
+    @staticmethod
+    def _prepare_final_messages(agent: Agent, current_messages: list, tool_responses: list):
         tool_response = agent.get_model().get_tool_message(tool_responses)
         if isinstance(tool_response, dict):
             current_messages.append(tool_response)
@@ -91,13 +93,19 @@ class AgentManager:
             arguments = json.loads(output["arguments"]) if isinstance(output["arguments"], str) else output["arguments"]
 
             for tool in agent.tools:
-                if tool.__name__ == function_name:
+                if isinstance(tool, Callable) and tool.__name__ == function_name:
                     tool_result = tool(**arguments)
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
                         return self.run_agent(tool_result.name, user_input)
-
+                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
+                if isinstance(tool, Container) and tool.name == function_name:
+                    tool_result = tool.run(arguments)
+                    if isinstance(tool_result, Agent):
+                        if not self.get_agent(tool_result.name)[1]:
+                            self.add_agent(tool_result)
+                        return self.run_agent(tool_result.name, user_input)
                     tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
@@ -140,7 +148,7 @@ class AgentManager:
             arguments = json.loads(output["arguments"]) if isinstance(output["arguments"], str) else output["arguments"]
 
             for tool in agent.tools:
-                if tool.__name__ == function_name:
+                if isinstance(tool, Callable) and tool.__name__ == function_name:
                     tool_result = tool(**arguments)
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
@@ -148,6 +156,15 @@ class AgentManager:
                         yield from self.run_agent_stream(tool_result.name, user_input)
                         return
                     tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
+                if isinstance(tool, Container) and tool.name == function_name:
+                    tool_result = tool.run(arguments)
+                    if isinstance(tool_result, Agent):
+                        if not self.get_agent(tool_result.name)[1]:
+                            self.add_agent(tool_result)
+                        yield from self.run_agent_stream(tool_result.name, user_input)
+                        return
+                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
+
         self._prepare_final_messages(agent, current_messages, tool_responses)
         yield from agent.get_stream_response()
         return

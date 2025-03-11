@@ -1,64 +1,3 @@
-# import inspect
-#
-#
-# def function_to_json(func) -> dict:
-#     """
-#     Converts a Python function into a JSON-serializable dictionary
-#     that describes the function's signature, including its name,
-#     description, and parameters.
-#
-#     Args:
-#         func: The function to be converted.
-#
-#     Returns:
-#         A dictionary representing the function's signature in JSON format.
-#     """
-#     type_map = {
-#         str: "string",
-#         int: "integer",
-#         float: "number",
-#         bool: "boolean",
-#         list: "array",
-#         dict: "object",
-#         type(None): "null",
-#     }
-#
-#     try:
-#         signature = inspect.signature(func)
-#     except ValueError as e:
-#         raise ValueError(
-#             f"Failed to get signature for function {func.__name__}: {str(e)}"
-#         )
-#
-#     parameters = {}
-#     for param in signature.parameters.values():
-#         try:
-#             param_type = type_map.get(param.annotation, "string")
-#         except KeyError as e:
-#             raise KeyError(
-#                 f"Unknown type annotation {param.annotation} for parameter {param.name}: {str(e)}"
-#             )
-#         parameters[param.name] = {"type": param_type}
-#
-#     required = [
-#         param.name
-#         for param in signature.parameters.values()
-#         if param.default == inspect._empty
-#     ]
-#     return {
-#         "type": "function",
-#         "function": {
-#             "name": func.__name__,
-#             "description": func.__doc__ or "",
-#             "parameters": {
-#                 "type": "object",
-#                 "properties": parameters,
-#                 "required": required,
-#                 "additionalProperties": False,
-#             },
-#             "strict": True,
-#         },
-#     }
 import inspect
 
 
@@ -157,6 +96,69 @@ def function_to_json(func, format_template: dict = None) -> dict:
     return populate_template(format_template, func_data)
 
 
+def container_to_json(container, format_template: dict = None) -> dict:
+    """
+    Converts a Container instance into a JSON-serializable dictionary based on a custom format template.
+
+    Args:
+        container: The Container instance to be converted.
+        format_template: A dictionary specifying the desired output structure.
+            Use placeholders like '{name}', '{description}', '{parameters}', '{required}'
+            as keys or values to indicate where container data should be inserted.
+            If None, a default format is used.
+
+    Returns:
+        A dictionary representing the container's attributes in the specified format.
+    """
+    # Default type mapping for annotations
+    type_map = {
+        "string": "string",
+        "integer": "integer",
+        "number": "number",
+        "boolean": "boolean",
+        "array": "array",
+        "object": "object",
+        "null": "null",
+    }
+
+    # Build parameters dynamically from environment variables
+    parameters = {}
+    required = []
+
+    for env_var in container.environment:
+        param_type = type_map.get(env_var.get("type", "string"), "string")
+        param_details = {"type": param_type}
+        parameters[env_var["name"]] = param_details
+        required.append(env_var["name"])
+
+    # Default format if none provided
+    if format_template is None:
+        format_template = {
+            "type": "container",
+            "container": {
+                "name": "{name}",
+                "description": "{description}",
+                "parameters": {
+                    "type": "object",
+                    "properties": "{parameters}",
+                    "required": "{required}",
+                    "additionalProperties": False,
+                }
+            },
+            "strict": True,
+        }
+
+    # Extract container metadata
+    container_data = {
+        "name": container.name,
+        "description": container.description,
+        "parameters": parameters,
+        "required": required
+    }
+
+    return populate_template(format_template, container_data)
+
+
 def extract_key_values(tool_call_output: dict, keys_to_find: list) -> dict:
     """
     Extracts values for specified keys from a tool_call output dictionary.
@@ -191,3 +193,7 @@ def extract_key_values(tool_call_output: dict, keys_to_find: list) -> dict:
             cleaned_result[key] = values[0] if len(values) == 1 else values
 
     return cleaned_result
+
+
+def replace_placeholder(instruction: str, result: bytes) -> str:
+    return instruction.replace("{result}", result.decode("utf-8"))
