@@ -200,13 +200,29 @@ modelLlama = Llama(name="llama3.1-70b")
 
 ## Troubleshooting
 
-While using Genai model with functions, if you get the following error:
+1. While using Genai model with functions, if you get the following error:
 
 ```python
 google.genai.errors.ClientError: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.tools[0].function_declarations[0].parameters.properties: should be non-empty for OBJECT type\n', 'status': 'INVALID_ARGUMENT'}}
 
 ```
-It is because google genai does not support functions without parameters. You can fix this by providing a dummy parameter. Please let me know if you have a better solution for this.
+It is because google genai does not support functions without parameters. You can fix this by providing a dummy parameter. Please let me know if you have a better solution for this. 
+
+2. If you get the following error while running the container tool:
+```python
+Error: Error while fetching server API version: ('Connection aborted.', FileNotFoundError(2, 'No such file or directory'))
+```
+
+It is because the docker daemon is not running. You can fix this by starting the docker daemon.
+and export the following environment variable:
+
+```bash
+#linux
+export DOCKER_HOST=unix:///var/run/docker.sock
+
+#colima
+export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
+```
 
 
 ## How It Works
