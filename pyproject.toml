@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agents-manager"
-version = "1.2.0"
+version = "1.2.1"
 authors = [
   { name = "Naroju Sandesh", email = "sandeshnaroju@gmail.com" },
 ]
-description = "A lightweight Python package for managing multi-agent orchestration. Easily define agents with custom instructions, tools, and models, and orchestrate their interactions seamlessly. Perfect for building modular, collaborative AI systems."
+description = "A lightweight Python package for managing multi-agent orchestration. Easily define agents with custom instructions, tools, containers, and models, and orchestrate their interactions seamlessly. Perfect for building modular, collaborative AI systems."
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
