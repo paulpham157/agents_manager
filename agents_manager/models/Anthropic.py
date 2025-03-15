@@ -24,7 +24,7 @@ class Anthropic(Model):
 
         self.instruction = ""
         self.client = Ap(
-            api_key=kwargs.get("api_key"),  # type: Optional[str]
+            api_key=kwargs.pop("api_key", None),  # type: Optional[str]
         )
 
     def generate_response(self) -> Dict:
@@ -35,18 +35,13 @@ class Anthropic(Model):
             Union[ChatCompletion, str]: The raw ChatCompletion object if stream=False,
                                         or a string if further processed.
         """
-
-        # remove api_key from kwargs
-        if "api_key" in self.kwargs:
-            self.kwargs.pop("api_key")
-
-        self.kwargs["stream"] = False
         message = self.client.messages.create(
             model=self.name,
             system=self.instruction,
             messages=self.get_messages(),
             **self.kwargs
         )
+
         return {
             "tool_calls": self.extract_content(message, "tool_use"),
             "content": self.extract_content(message, "text")[0].text,
@@ -57,11 +52,7 @@ class Anthropic(Model):
         Generate a streaming response from the Anthropic model with tool_calls and content.
         Yields dictionaries containing accumulated tool_calls and content.
         """
-        # remove api_key from kwargs
-        if "api_key" in self.kwargs:
-            self.kwargs.pop("api_key")
 
-        self.kwargs.pop("stream")
         with self.client.messages.stream(
                 model=self.name,
                 system=self.instruction,
@@ -269,3 +260,6 @@ class Anthropic(Model):
         self.kwargs.update({
             "tools": json_tools
         })
+
+    def set_output_format(self, output_format: Callable) -> None:
+        pass

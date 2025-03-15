@@ -48,7 +48,6 @@ openaiModel = OpenAi(name="gpt-4o-mini")
 anthropicModel = Anthropic(
         name="claude-3-5-sonnet-20241022",
         max_tokens= 1024,
-        stream=True,
     )
 
 #Define the Genai model
@@ -157,11 +156,33 @@ agent5 = Agent(
         },
         return_to={
             "agent": agent6,
-            "instruction": "The result is: {result}"
+            "instruction": "The result is: {result}" # {result} will be replaced with the result of the container
         },
     )]
 )
 ```
+
+You can also pass output_format to agent to format the output.
+
+```python
+from pydantic import BaseModel
+
+from agents_manager import Agent
+
+
+class Answer(BaseModel):
+    value: str
+
+agent1 = Agent(
+    name="agent1",
+    instruction="You are a helpful assistant",
+    model=model,
+    output_format=Answer
+)
+```
+Note 1: The output_format should be a pydantic model.
+
+Note 2: Anthropic model does not support output_format, you can use tool to format the output.
 
 
 You can also run the agent with a dictionary as the input content.

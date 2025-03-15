@@ -47,9 +47,10 @@ class AgentManager:
 
         if agent is None:
             raise ValueError(f"No agent found with name: {name}")
-
+        agent.set_messages([])
         agent.set_system_message(agent.instruction)
         agent.set_tools(agent.tools)
+        agent.set_output_format()
         if user_input:
             agent.set_user_message(user_input)
         return _, agent

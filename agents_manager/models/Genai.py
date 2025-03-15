@@ -24,16 +24,16 @@ class Genai(Model):
             raise ValueError("A valid  Genai model name is required")
 
         args = {}
-        if "api_key" in kwargs:
-            args["api_key"] = kwargs["api_key"]
-        if "api_version" in kwargs:
-            args["api_version"] = types.HttpOptions(api_version=kwargs["api_version"])
-        if "project" in kwargs:
-            args["project"] = kwargs["project"]
-        if "location" in kwargs:
-            args["location"] = kwargs["location"]
-        if "vertexai" in kwargs:
-            args["vertexai"] = kwargs["vertexai"]
+        if "api_key" in self.kwargs:
+            args["api_key"] = self.kwargs.pop("api_key")
+        if "api_version" in self.kwargs:
+            args["api_version"] = types.HttpOptions(api_version=self.kwargs.pop("api_version"))
+        if "project" in self.kwargs:
+            args["project"] = self.kwargs.pop("project")
+        if "location" in self.kwargs:
+            args["location"] = self.kwargs.pop("location")
+        if "vertexai" in self.kwargs:
+            args["vertexai"] = self.kwargs.pop("vertexai")
 
         self.instructions = ""
         self.tools = []
@@ -51,29 +51,24 @@ class Genai(Model):
                                         or a string if further processed.
         """
 
-        # remove api_key from kwargs
-        if "api_key" in self.kwargs:
-            self.kwargs.pop("api_key")
-        if "api_version" in self.kwargs:
-            self.kwargs.pop("api_version")
-        if "project" in self.kwargs:
-            self.kwargs.pop("project")
-        if "location" in self.kwargs:
-            self.kwargs.pop("location")
-        if "vertexai" in self.kwargs:
-            self.kwargs.pop("vertexai")
+        kwargs = self.kwargs.copy()
+        output_format = kwargs.pop("output_format")
+        tools = kwargs.pop("tools", None)
+        if self.kwargs.get("output_format", None) and self.has_tool_function_response(self.get_messages()):
+            config = {
+                "system_instruction": self.instructions,
+                'response_mime_type': 'application/json',
+                'response_schema': output_format,
+                **kwargs
+            }
+        else:
+            config = {
+                "system_instruction": self.instructions,
+                "tools": [{"function_declarations": tools}],
+                "automatic_function_calling": {"disable": True},
+                **kwargs
+            }
 
-        config = {}
-        if self.kwargs.get("tools"):
-            functions = self.convert_to_function_declarations(self.kwargs.get("tools"))
-            tool = types.Tool(function_declarations=functions)
-            config = types.GenerateContentConfig(
-                system_instruction=self.instructions,
-                tools=[tool],
-                automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                    disable=True
-                ),
-            )
         response = self.client.models.generate_content(
             model=self.name,
             contents=self._convert_to_contents(self.get_messages()),
@@ -94,29 +89,24 @@ class Genai(Model):
                                         or a string if further processed.
         """
 
-        # remove api_key from kwargs
-        if "api_key" in self.kwargs:
-            self.kwargs.pop("api_key")
-        if "api_version" in self.kwargs:
-            self.kwargs.pop("api_version")
-        if "project" in self.kwargs:
-            self.kwargs.pop("project")
-        if "location" in self.kwargs:
-            self.kwargs.pop("location")
-        if "vertexai" in self.kwargs:
-            self.kwargs.pop("vertexai")
+        kwargs = self.kwargs.copy()
+        output_format = kwargs.pop("output_format")
+        tools = kwargs.pop("tools", None)
 
-        config = {}
-        if self.kwargs.get("tools"):
-            functions = self.convert_to_function_declarations(self.kwargs.get("tools"))
-            tool = types.Tool(function_declarations=functions)
-            config = types.GenerateContentConfig(
-                system_instruction=self.instructions,
-                tools=[tool],
-                automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                    disable=True
-                ),
-            )
+        if self.kwargs.get("output_format", None) and self.has_tool_function_response(self.get_messages()):
+            config = {
+                "system_instruction": self.instructions,
+                'response_mime_type': 'application/json',
+                'response_schema': output_format,
+                **kwargs
+            }
+        else:
+            config = {
+                "system_instruction": self.instructions,
+                "tools": [{"function_declarations": tools}],
+                "automatic_function_calling": {"disable": True},
+                **kwargs
+            }
 
         response = self.client.models.generate_content_stream(
             model=self.name,
@@ -138,46 +128,17 @@ class Genai(Model):
         return
 
     @staticmethod
-    def convert_to_function_declarations(json_input):
-        if not isinstance(json_input, list):
-            raise ValueError("Input should be a list of dictionaries")
+    def has_tool_function_response(messages):
+        if not messages:
+            return False
 
-        function_declarations = []
+        last_message = messages[-1]
 
-        for data in json_input:
-            # Extract name, description, and parameters
-            name = data.get('name')
-            description = data.get('description')
-            params = data.get('parameters', {})
-
-            # Validate required fields
-            if not name or not description:
-                raise ValueError("Each function must have name and description")
-
-            # Convert parameters to Schema format
-            schema_properties = {}
-            for prop_name, prop_details in params.get('properties', {}).items():
-                schema_properties[prop_name] = types.Schema(
-                    type=prop_details.get('type', 'STRING').upper(),
-                    description=prop_details.get('description', '')
-                )
-
-            parameters = types.Schema(
-                type=params.get('type', "OBJECT").upper(),
-                properties=schema_properties,
-                required=params.get('required', [])
-            )
-
-            # Create FunctionDeclaration and add to list
-            function_declarations.append(
-                types.FunctionDeclaration(
-                    name=name,
-                    description=description,
-                    parameters=parameters
-                )
-            )
-
-        return function_declarations
+        return (
+                last_message.get("role") == "tool" and
+                isinstance(last_message.get("content"), list) and
+                any("function_response" in item for item in last_message["content"])
+        )
 
     @staticmethod
     def _convert_to_contents(messages):
@@ -191,6 +152,7 @@ class Genai(Model):
         Returns:
             list: List of `types.Content` objects.
         """
+
         contents = []
         for message in messages:
             parts = message.get("content", None)
@@ -292,13 +254,13 @@ class Genai(Model):
         content = []
         for tool_response in tool_responses:
             content.append({
-                            "function_response": {
-                                "name": tool_response["name"],
-                                "response": {
-                                    "result": tool_response["tool_result"],
-                                },
-                            }
-                        })
+                "function_response": {
+                    "name": tool_response["name"],
+                    "response": {
+                        "result": tool_response["tool_result"],
+                    },
+                }
+            })
         tool_results["role"] = "tool"
         tool_results["content"] = content
 
@@ -328,4 +290,9 @@ class Genai(Model):
                 json_tools.append(container_to_json(tool, self.get_tool_format()))
         self.kwargs.update({
             "tools": json_tools
+        })
+
+    def set_output_format(self, output_format: Callable) -> None:
+        self.kwargs.update({
+            "output_format": output_format
         })

@@ -10,7 +10,9 @@ class Agent:
                  instruction: Optional[str] = None,
                  model: Optional[Model] = None,
                  tools: Optional[List[Union[Callable, Container]]] = None,
-                 tool_choice: Optional[Callable] = None) -> None:
+                 tool_choice: Optional[Dict] = None,
+                 output_format: Optional[Callable] = None
+                 ) -> None:
         """
         Initialize the Agent with a name, instruction, model, tools, and tool choice function.
         Args:
@@ -19,6 +21,7 @@ class Agent:
             model:
             tools:
             tool_choice:
+            output_format
         """
 
         self.name: Optional[str] = name
@@ -28,6 +31,7 @@ class Agent:
             raise ValueError("A valid instance of a Model subclass is required")
         self.model: Model = model
         self.tool_choice = tool_choice
+        self.output_format = output_format
 
     def set_instruction(self, instruction: str) -> None:
         """
@@ -155,3 +159,10 @@ class Agent:
             message (str): The user message.
         """
         self.model.set_user_message(message)
+
+    def set_output_format(self) -> None:
+        """
+        Set the output format function for the agent.
+
+        """
+        self.model.set_output_format(self.output_format)

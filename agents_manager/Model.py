@@ -152,3 +152,13 @@ class Model(ABC):
             tools (List[Callable]): The tools.
         """
         pass
+
+    @abstractmethod
+    def set_output_format(self, output_format: Callable) -> None:
+        """
+        Set the output format for the model.
+
+        Args:
+            output_format (Callable): The output format.
+        """
+        pass
