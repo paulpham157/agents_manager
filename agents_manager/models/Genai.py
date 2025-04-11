@@ -52,28 +52,26 @@ class Genai(Model):
         """
 
         kwargs = self.kwargs.copy()
-        output_format = kwargs.pop("output_format")
         tools = kwargs.pop("tools", None)
-        if self.kwargs.get("output_format", None) and self.has_tool_function_response(self.get_messages()):
-            config = {
-                "system_instruction": self.instructions,
-                'response_mime_type': 'application/json',
-                'response_schema': output_format,
-                **kwargs
-            }
-        else:
+        output_format = kwargs.pop("output_format", None)
+        config = {
+            "system_instruction": self.instructions,
+        }
+        if not self.has_tool_function_response(self.get_messages()):
             if tools:
-                config = {
-                    "system_instruction": self.instructions,
+                config.update({
                     "tools": [{"function_declarations": tools}],
                     "automatic_function_calling": {"disable": True},
-                    **kwargs
-                }
-            else:
-                config = {
-                    "system_instruction": self.instructions,
-                    **kwargs
-                }
+                })
+
+        if output_format:
+            config.update({
+                'response_mime_type': 'application/json',
+                'response_schema': output_format,
+            })
+
+        config.update(kwargs)
+
         response = self.client.models.generate_content(
             model=self.name,
             contents=self._convert_to_contents(self.get_messages()),
@@ -95,29 +93,25 @@ class Genai(Model):
         """
 
         kwargs = self.kwargs.copy()
-        output_format = kwargs.pop("output_format")
         tools = kwargs.pop("tools", None)
-
-        if self.kwargs.get("output_format", None) and self.has_tool_function_response(self.get_messages()):
-            config = {
-                "system_instruction": self.instructions,
-                'response_mime_type': 'application/json',
-                'response_schema': output_format,
-                **kwargs
-            }
-        else:
+        output_format = kwargs.pop("output_format", None)
+        config = {
+            "system_instruction": self.instructions,
+        }
+        if not self.has_tool_function_response(self.get_messages()):
             if tools:
-                config = {
-                    "system_instruction": self.instructions,
+                config.update({
                     "tools": [{"function_declarations": tools}],
                     "automatic_function_calling": {"disable": True},
-                    **kwargs
-                }
-            else:
-                config = {
-                    "system_instruction": self.instructions,
-                    **kwargs
-                }
+                })
+
+        if output_format:
+            config.update({
+                'response_mime_type': 'application/json',
+                'response_schema': output_format,
+            })
+
+        config.update(kwargs)
         response = self.client.models.generate_content_stream(
             model=self.name,
             contents=self._convert_to_contents(self.get_messages()),
