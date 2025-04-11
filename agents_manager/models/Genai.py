@@ -62,13 +62,18 @@ class Genai(Model):
                 **kwargs
             }
         else:
-            config = {
-                "system_instruction": self.instructions,
-                "tools": [{"function_declarations": tools}],
-                "automatic_function_calling": {"disable": True},
-                **kwargs
-            }
-
+            if tools:
+                config = {
+                    "system_instruction": self.instructions,
+                    "tools": [{"function_declarations": tools}],
+                    "automatic_function_calling": {"disable": True},
+                    **kwargs
+                }
+            else:
+                config = {
+                    "system_instruction": self.instructions,
+                    **kwargs
+                }
         response = self.client.models.generate_content(
             model=self.name,
             contents=self._convert_to_contents(self.get_messages()),
@@ -101,13 +106,18 @@ class Genai(Model):
                 **kwargs
             }
         else:
-            config = {
-                "system_instruction": self.instructions,
-                "tools": [{"function_declarations": tools}],
-                "automatic_function_calling": {"disable": True},
-                **kwargs
-            }
-
+            if tools:
+                config = {
+                    "system_instruction": self.instructions,
+                    "tools": [{"function_declarations": tools}],
+                    "automatic_function_calling": {"disable": True},
+                    **kwargs
+                }
+            else:
+                config = {
+                    "system_instruction": self.instructions,
+                    **kwargs
+                }
         response = self.client.models.generate_content_stream(
             model=self.name,
             contents=self._convert_to_contents(self.get_messages()),
