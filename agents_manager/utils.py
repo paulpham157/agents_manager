@@ -46,7 +46,9 @@ def function_to_json(func, format_template: dict = None) -> dict:
     try:
         signature = inspect.signature(func)
     except ValueError as e:
-        raise ValueError(f"Failed to get signature for function {func.__name__}: {str(e)}")
+        raise ValueError(
+            f"Failed to get signature for function {func.__name__}: {str(e)}"
+        )
 
     # Build parameters dynamically
     parameters = {}
@@ -80,7 +82,7 @@ def function_to_json(func, format_template: dict = None) -> dict:
                     "properties": "{parameters}",
                     "required": "{required}",
                     "additionalProperties": False,
-                }
+                },
             },
             "strict": True,
         }
@@ -90,7 +92,7 @@ def function_to_json(func, format_template: dict = None) -> dict:
         "name": func.__name__,
         "description": (func.__doc__ or "").strip(),
         "parameters": parameters,
-        "required": required if required else []
+        "required": required if required else [],
     }
 
     return populate_template(format_template, func_data)
@@ -143,7 +145,7 @@ def container_to_json(container, format_template: dict = None) -> dict:
                     "properties": "{parameters}",
                     "required": "{required}",
                     "additionalProperties": False,
-                }
+                },
             },
             "strict": True,
         }
@@ -153,7 +155,7 @@ def container_to_json(container, format_template: dict = None) -> dict:
         "name": container.name,
         "description": container.description,
         "parameters": parameters,
-        "required": required
+        "required": required,
     }
 
     return populate_template(format_template, container_data)
@@ -170,7 +172,9 @@ def extract_key_values(tool_call_output: dict, keys_to_find: list) -> dict:
     Returns:
         A dictionary mapping each specified key to its value(s) from the output.
     """
-    result = {key: [] for key in keys_to_find}  # Initialize with empty lists for each key
+    result = {
+        key: [] for key in keys_to_find
+    }  # Initialize with empty lists for each key
 
     # Helper function to recursively search the dictionary
     def search_dict(data, target_keys):
@@ -197,3 +201,20 @@ def extract_key_values(tool_call_output: dict, keys_to_find: list) -> dict:
 
 def replace_placeholder(instruction: str, result: bytes) -> str:
     return instruction.replace("{result}", result.decode("utf-8"))
+
+
+def handover(agent_name: str, description: str):
+    """
+    Hands over the task to the given agent.
+
+    Args:
+        agent_name: name of the agent you want to hand over to
+        description: why do you want to handover
+    """
+
+    def handover_inner() -> str:
+        return agent_name
+
+    handover_inner.__name__ = f"handover_{agent_name}"
+    handover_inner.__doc__ = description
+    return handover_inner
