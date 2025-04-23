@@ -100,7 +100,9 @@ class AgentManager:
             )
 
             for tool in agent.tools:
-                if isinstance(tool, Callable) and tool.__name__ == function_name:
+                if isinstance(tool, Callable) and not tool.__name__.startswith(
+                    "handover_"
+                ):
                     tool_result = tool(**arguments)
 
                     if isinstance(tool_result, Agent):
@@ -116,11 +118,15 @@ class AgentManager:
                         }
                     )
 
-                if isinstance(tool, Callable) and tool.__name__.startswith("handover_"):
+                elif isinstance(tool, Callable) and tool.__name__.startswith(
+                    "handover_"
+                ):
                     tool_result = tool()
                     return self.run_agent(tool_result, user_input)
 
-                if isinstance(tool, Container) and tool.name == function_name:
+                elif isinstance(tool, Container) and not tool.name.startswith(
+                    "handover_"
+                ):
                     tool_result = tool.run(arguments)
 
                     if isinstance(tool_result, Agent):
@@ -182,7 +188,9 @@ class AgentManager:
             )
 
             for tool in agent.tools:
-                if isinstance(tool, Callable) and tool.__name__ == function_name:
+                if isinstance(tool, Callable) and not tool.__name__.startswith(
+                    "handover_"
+                ):
                     tool_result = tool(**arguments)
 
                     if isinstance(tool_result, Agent):
@@ -199,12 +207,16 @@ class AgentManager:
                         }
                     )
 
-                if isinstance(tool, Callable) and tool.__name__.startswith("handover_"):
+                elif isinstance(tool, Callable) and tool.__name__.startswith(
+                    "handover_"
+                ):
                     tool_result = tool()
                     yield from self.run_agent(tool_result, user_input)
                     return
 
-                if isinstance(tool, Container) and tool.name == function_name:
+                elif isinstance(tool, Container) and not tool.name.startswith(
+                    "handover_"
+                ):
                     tool_result = tool.run(arguments)
 
                     if isinstance(tool_result, Agent):
