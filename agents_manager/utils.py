@@ -209,12 +209,12 @@ def handover(agent_name: str, description: str):
 
     Args:
         agent_name: name of the agent you want to hand over to
-        description: why do you want to hand over
+        description: why do you want to handover
     """
 
-    def handover_inner() -> tuple[str, str]:
-        return agent_name, description
+    def handover_inner() -> str:
+        return agent_name
 
-    handover_inner.__name__ = "handover"
+    handover_inner.__name__ = f"handover_{agent_name}"
     handover_inner.__doc__ = description
     return handover_inner

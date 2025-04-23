@@ -102,6 +102,12 @@ class AgentManager:
             for tool in agent.tools:
                 if isinstance(tool, Callable) and tool.__name__ == function_name:
                     tool_result = tool(**arguments)
+
+                    if isinstance(tool_result, Agent):
+                        if not self.get_agent(tool_result.name)[1]:
+                            self.add_agent(tool_result)
+                        return self.run_agent(tool_result.name, user_input)
+
                     tool_responses.append(
                         {
                             "id": id,
@@ -110,14 +116,18 @@ class AgentManager:
                         }
                     )
 
-                if isinstance(tool, Callable) and tool.__name__ == "handover":
+                if isinstance(tool, Callable) and tool.__name__.startswith("handover_"):
                     tool_result = tool()
-                    if not self.get_agent(tool_result[1])[1]:
-                        self.add_agent(self.get_agent(tool_result[1])[1])
-                    return self.run_agent(tool_result[1], user_input)
+                    return self.run_agent(tool_result, user_input)
 
                 if isinstance(tool, Container) and tool.name == function_name:
                     tool_result = tool.run(arguments)
+
+                    if isinstance(tool_result, Agent):
+                        if not self.get_agent(tool_result.name)[1]:
+                            self.add_agent(tool_result)
+                        return self.run_agent(tool_result.name, user_input)
+
                     tool_responses.append(
                         {
                             "id": id,
@@ -174,6 +184,13 @@ class AgentManager:
             for tool in agent.tools:
                 if isinstance(tool, Callable) and tool.__name__ == function_name:
                     tool_result = tool(**arguments)
+
+                    if isinstance(tool_result, Agent):
+                        if not self.get_agent(tool_result.name)[1]:
+                            self.add_agent(tool_result)
+                        yield from self.run_agent_stream(tool_result.name, user_input)
+                        return
+
                     tool_responses.append(
                         {
                             "id": id,
@@ -182,15 +199,20 @@ class AgentManager:
                         }
                     )
 
-                if isinstance(tool, Callable) and tool.__name__ == "handover":
+                if isinstance(tool, Callable) and tool.__name__.startswith("handover_"):
                     tool_result = tool()
-                    if not self.get_agent(tool_result[1])[1]:
-                        self.add_agent(self.get_agent(tool_result[1])[1])
-                    yield from self.run_agent(tool_result[1], user_input)
+                    yield from self.run_agent(tool_result, user_input)
                     return
 
                 if isinstance(tool, Container) and tool.name == function_name:
                     tool_result = tool.run(arguments)
+
+                    if isinstance(tool_result, Agent):
+                        if not self.get_agent(tool_result.name)[1]:
+                            self.add_agent(tool_result)
+                        yield from self.run_agent_stream(tool_result.name, user_input)
+                        return
+
                     tool_responses.append(
                         {
                             "id": id,
