@@ -39,9 +39,9 @@ class AgentManager:
                 return _, agent
         return None, None
 
-    def _initialize_user_input(self, name: str,
-                               user_input: Optional[Any] = None) -> \
-            tuple[Optional[int], Optional[Agent]]:
+    def _initialize_user_input(
+        self, name: str, user_input: Optional[Any] = None
+    ) -> tuple[Optional[int], Optional[Agent]]:
 
         _, agent = self.get_agent(name)
 
@@ -56,7 +56,9 @@ class AgentManager:
         return _, agent
 
     @staticmethod
-    def _prepare_final_messages(agent: Agent, current_messages: list, tool_responses: list):
+    def _prepare_final_messages(
+        agent: Agent, current_messages: list, tool_responses: list
+    ):
         tool_response = agent.get_model().get_tool_message(tool_responses)
         if isinstance(tool_response, dict):
             current_messages.append(tool_response)
@@ -77,10 +79,10 @@ class AgentManager:
         """
         _, agent = self._initialize_user_input(name, user_input)
         response = agent.get_response()
-        if not response['tool_calls']:
+        if not response["tool_calls"]:
             return response
 
-        tool_calls = response['tool_calls']
+        tool_calls = response["tool_calls"]
         current_messages = agent.get_messages()
         assistant_message = agent.get_model().get_assistant_message(response)
         if isinstance(assistant_message, dict):
@@ -91,30 +93,47 @@ class AgentManager:
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
             id, function_name = output["id"], output["name"]
-            arguments = json.loads(output["arguments"]) if isinstance(output["arguments"], str) else output["arguments"]
+            arguments = (
+                json.loads(output["arguments"])
+                if isinstance(output["arguments"], str)
+                else output["arguments"]
+            )
 
             for tool in agent.tools:
                 if isinstance(tool, Callable) and tool.__name__ == function_name:
                     tool_result = tool(**arguments)
-                    if isinstance(tool_result, Agent):
-                        if not self.get_agent(tool_result.name)[1]:
-                            self.add_agent(tool_result)
-                        return self.run_agent(tool_result.name, user_input)
-                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
+                    tool_responses.append(
+                        {
+                            "id": id,
+                            "tool_result": str(tool_result),
+                            "name": function_name,
+                        }
+                    )
+
+                if isinstance(tool, Callable) and tool.__name__ == "handover":
+                    tool_result = tool()
+                    if not self.get_agent(tool_result[1])[1]:
+                        self.add_agent(self.get_agent(tool_result[1])[1])
+                    return self.run_agent(tool_result[1], user_input)
+
                 if isinstance(tool, Container) and tool.name == function_name:
                     tool_result = tool.run(arguments)
-                    if isinstance(tool_result, Agent):
-                        if not self.get_agent(tool_result.name)[1]:
-                            self.add_agent(tool_result)
-                        return self.run_agent(tool_result.name, user_input)
-                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
+                    tool_responses.append(
+                        {
+                            "id": id,
+                            "tool_result": str(tool_result),
+                            "name": function_name,
+                        }
+                    )
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
         response = agent.get_response()
-        if not response['tool_calls']:
+        if not response["tool_calls"]:
             return response
 
-    def run_agent_stream(self, name: str, user_input: Optional[Any] = None) -> Generator[Dict, None, None]:
+    def run_agent_stream(
+        self, name: str, user_input: Optional[Any] = None
+    ) -> Generator[Dict, None, None]:
         """
         Run a specific agent's streaming response.
 
@@ -132,10 +151,10 @@ class AgentManager:
             return
 
         response = agent.get_response()
-        if not response['tool_calls']:
+        if not response["tool_calls"]:
             return response["content"]
 
-        tool_calls = response['tool_calls']
+        tool_calls = response["tool_calls"]
         current_messages = agent.get_messages()
         assistant_message = agent.get_model().get_assistant_message(response)
         if isinstance(assistant_message, dict):
@@ -146,7 +165,11 @@ class AgentManager:
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
             id, function_name = output["id"], output["name"]
-            arguments = json.loads(output["arguments"]) if isinstance(output["arguments"], str) else output["arguments"]
+            arguments = (
+                json.loads(output["arguments"])
+                if isinstance(output["arguments"], str)
+                else output["arguments"]
+            )
 
             for tool in agent.tools:
                 if isinstance(tool, Callable) and tool.__name__ == function_name:
@@ -156,7 +179,13 @@ class AgentManager:
                             self.add_agent(tool_result)
                         yield from self.run_agent_stream(tool_result.name, user_input)
                         return
-                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
+                    tool_responses.append(
+                        {
+                            "id": id,
+                            "tool_result": str(tool_result),
+                            "name": function_name,
+                        }
+                    )
                 if isinstance(tool, Container) and tool.name == function_name:
                     tool_result = tool.run(arguments)
                     if isinstance(tool_result, Agent):
@@ -164,7 +193,13 @@ class AgentManager:
                             self.add_agent(tool_result)
                         yield from self.run_agent_stream(tool_result.name, user_input)
                         return
-                    tool_responses.append({"id": id, "tool_result": str(tool_result), "name": function_name})
+                    tool_responses.append(
+                        {
+                            "id": id,
+                            "tool_result": str(tool_result),
+                            "name": function_name,
+                        }
+                    )
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
         yield from agent.get_stream_response()
