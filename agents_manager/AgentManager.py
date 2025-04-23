@@ -100,8 +100,9 @@ class AgentManager:
             )
 
             for tool in agent.tools:
-                if isinstance(tool, Callable) and not tool.__name__.startswith(
-                    "handover_"
+                if isinstance(tool, Callable) and (
+                    tool.__name__ == function_name
+                    and not tool.__name__.startswith("handover_")
                 ):
                     tool_result = tool(**arguments)
 
@@ -124,8 +125,9 @@ class AgentManager:
                     tool_result = tool()
                     return self.run_agent(tool_result, user_input)
 
-                elif isinstance(tool, Container) and not tool.name.startswith(
-                    "handover_"
+                elif isinstance(tool, Container) and (
+                    tool.__name__ == function_name
+                    and not tool.name.startswith("handover_")
                 ):
                     tool_result = tool.run(arguments)
 
@@ -188,8 +190,9 @@ class AgentManager:
             )
 
             for tool in agent.tools:
-                if isinstance(tool, Callable) and not tool.__name__.startswith(
-                    "handover_"
+                if isinstance(tool, Callable) and (
+                    tool.__name__ == function_name
+                    and not tool.__name__.startswith("handover_")
                 ):
                     tool_result = tool(**arguments)
 
@@ -214,8 +217,9 @@ class AgentManager:
                     yield from self.run_agent(tool_result, user_input)
                     return
 
-                elif isinstance(tool, Container) and not tool.name.startswith(
-                    "handover_"
+                elif isinstance(tool, Container) and (
+                    tool.__name__ == function_name
+                    and not tool.name.startswith("handover_")
                 ):
                     tool_result = tool.run(arguments)
 
