@@ -11,6 +11,7 @@ class AgentManager:
         Initialize the AgentManager with an empty list of agents.
         """
         self.agents: List[Agent] = []
+        self.agents_chain_list: List[Agent] = []
 
     def add_agent(self, agent: Agent) -> None:
         """
@@ -40,14 +41,18 @@ class AgentManager:
         return None, None
 
     def _initialize_user_input(
-        self, name: str, user_input: Optional[Any] = None
+        self,
+        name: str,
+        user_input: Optional[Any] = None,
+        return_to_source: bool = False,
     ) -> tuple[Optional[int], Optional[Agent]]:
 
         _, agent = self.get_agent(name)
 
         if agent is None:
             raise ValueError(f"No agent found with name: {name}")
-        agent.set_messages([])
+        if not return_to_source:
+            agent.set_messages([])
         agent.set_system_message(agent.instruction)
         agent.set_tools(agent.tools)
         agent.set_output_format()
@@ -66,7 +71,12 @@ class AgentManager:
             current_messages.extend(tool_response)
         agent.set_messages(current_messages)
 
-    def run_agent(self, name: str, user_input: Optional[Any] = None) -> Dict:
+    def run_agent(
+        self,
+        name: str,
+        user_input: Optional[Any] = None,
+        return_to_source: bool = False,
+    ) -> Dict:
         """
         Run a specific agent's non-streaming response.
 
@@ -77,7 +87,7 @@ class AgentManager:
         Returns:
             Any: The agent's response.
         """
-        _, agent = self._initialize_user_input(name, user_input)
+        _, agent = self._initialize_user_input(name, user_input, return_to_source)
         response = agent.get_response()
         if not response["tool_calls"]:
             return response
@@ -105,10 +115,10 @@ class AgentManager:
                     and not tool.__name__.startswith("handover_")
                 ):
                     tool_result = tool(**arguments)
-
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
+                        self.agents_chain_list.append(agent)
                         return self.run_agent(tool_result.name, user_input)
 
                     tool_responses.append(
@@ -123,7 +133,10 @@ class AgentManager:
                     "handover_"
                 ):
                     tool_result = tool()
-                    return self.run_agent(tool_result, user_input)
+                    self.agents_chain_list.append(agent)
+                    return self.run_agent(
+                        tool_result, user_input, return_to_source=False
+                    )
 
                 elif isinstance(tool, Container) and (
                     tool.name == function_name and not tool.name.startswith("handover_")
@@ -133,6 +146,7 @@ class AgentManager:
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
+                        self.agents_chain_list.append(agent)
                         return self.run_agent(tool_result.name, user_input)
 
                     tool_responses.append(
@@ -145,11 +159,20 @@ class AgentManager:
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
         response = agent.get_response()
+
+        if self.agents_chain_list:
+            prev_agent = self.agents_chain_list.pop()
+            prev_agent.set_messages(agent.get_messages())
+            return self.run_agent(prev_agent.name, return_to_source=True)
+
         if not response["tool_calls"]:
             return response
 
     def run_agent_stream(
-        self, name: str, user_input: Optional[Any] = None
+        self,
+        name: str,
+        user_input: Optional[Any] = None,
+        return_to_source: bool = False,
     ) -> Generator[Dict, None, None]:
         """
         Run a specific agent's streaming response.
@@ -161,7 +184,9 @@ class AgentManager:
         Returns:
             Any: The agent's response.
         """
-        position, agent = self._initialize_user_input(name, user_input)
+        position, agent = self._initialize_user_input(
+            name, user_input, return_to_source
+        )
         initial_tools = agent.get_tools()
         if not initial_tools and position == 0:
             yield from agent.get_stream_response()
@@ -198,6 +223,7 @@ class AgentManager:
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
+                        self.agents_chain_list.append(agent)
                         yield from self.run_agent_stream(tool_result.name, user_input)
                         return
 
@@ -213,6 +239,7 @@ class AgentManager:
                     "handover_"
                 ):
                     tool_result = tool()
+                    self.agents_chain_list.append(agent)
                     yield from self.run_agent_stream(tool_result, user_input)
                     return
 
@@ -224,6 +251,7 @@ class AgentManager:
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
+                        self.agents_chain_list.append(agent)
                         yield from self.run_agent_stream(tool_result.name, user_input)
                         return
 
@@ -236,5 +264,11 @@ class AgentManager:
                     )
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
+
+        if self.agents_chain_list:
+            prev_agent = self.agents_chain_list.pop()
+            prev_agent.set_messages(agent.get_messages())
+            return self.run_agent(prev_agent.name, return_to_source=True)
+
         yield from agent.get_stream_response()
         return
