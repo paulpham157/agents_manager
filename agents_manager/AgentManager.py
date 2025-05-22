@@ -44,15 +44,13 @@ class AgentManager:
         self,
         name: str,
         user_input: Optional[Any] = None,
-        return_to_source: bool = False,
     ) -> tuple[Optional[int], Optional[Agent]]:
 
         _, agent = self.get_agent(name)
 
         if agent is None:
             raise ValueError(f"No agent found with name: {name}")
-        if not return_to_source:
-            agent.set_messages([])
+        agent.set_messages([])
         agent.set_system_message(agent.instruction)
         agent.set_tools(agent.tools)
         agent.set_output_format()
@@ -75,7 +73,6 @@ class AgentManager:
         self,
         name: str,
         user_input: Optional[Any] = None,
-        return_to_source: bool = False,
     ) -> Dict:
         """
         Run a specific agent's non-streaming response.
@@ -87,7 +84,7 @@ class AgentManager:
         Returns:
             Any: The agent's response.
         """
-        _, agent = self._initialize_user_input(name, user_input, return_to_source)
+        _, agent = self._initialize_user_input(name, user_input)
         response = agent.get_response()
         if not response["tool_calls"]:
             return response
@@ -134,9 +131,7 @@ class AgentManager:
                 ):
                     tool_result = tool()
                     self.agents_chain_list.append(agent)
-                    return self.run_agent(
-                        tool_result, user_input, return_to_source=False
-                    )
+                    return self.run_agent(tool_result, user_input)
 
                 elif isinstance(tool, Container) and (
                     tool.name == function_name and not tool.name.startswith("handover_")
@@ -162,8 +157,7 @@ class AgentManager:
 
         if self.agents_chain_list:
             prev_agent = self.agents_chain_list.pop()
-            prev_agent.set_messages(agent.get_messages())
-            return self.run_agent(prev_agent.name, return_to_source=True)
+            return self.run_agent(prev_agent.name, agent.get_messages()[1:])
 
         if not response["tool_calls"]:
             return response
@@ -172,7 +166,6 @@ class AgentManager:
         self,
         name: str,
         user_input: Optional[Any] = None,
-        return_to_source: bool = False,
     ) -> Generator[Dict, None, None]:
         """
         Run a specific agent's streaming response.
@@ -184,9 +177,7 @@ class AgentManager:
         Returns:
             Any: The agent's response.
         """
-        position, agent = self._initialize_user_input(
-            name, user_input, return_to_source
-        )
+        position, agent = self._initialize_user_input(name, user_input)
         initial_tools = agent.get_tools()
         if not initial_tools and position == 0:
             yield from agent.get_stream_response()
@@ -267,8 +258,7 @@ class AgentManager:
 
         if self.agents_chain_list:
             prev_agent = self.agents_chain_list.pop()
-            prev_agent.set_messages(agent.get_messages())
-            return self.run_agent(prev_agent.name, return_to_source=True)
+            yield from self.run_agent_stream(prev_agent.name, agent.get_messages()[1:])
 
         yield from agent.get_stream_response()
         return
