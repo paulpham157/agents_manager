@@ -11,7 +11,6 @@ class AgentManager:
         Initialize the AgentManager with an empty list of agents.
         """
         self.agents: List[Agent] = []
-        self.agents_chain_list: List[Agent] = []
 
     def add_agent(self, agent: Agent) -> None:
         """
@@ -41,9 +40,7 @@ class AgentManager:
         return None, None
 
     def _initialize_user_input(
-        self,
-        name: str,
-        user_input: Optional[Any] = None,
+        self, name: str, user_input: Optional[Any] = None
     ) -> tuple[Optional[int], Optional[Agent]]:
 
         _, agent = self.get_agent(name)
@@ -69,11 +66,7 @@ class AgentManager:
             current_messages.extend(tool_response)
         agent.set_messages(current_messages)
 
-    def run_agent(
-        self,
-        name: str,
-        user_input: Optional[Any] = None,
-    ) -> Dict:
+    def run_agent(self, name: str, user_input: Optional[Any] = None) -> Dict:
         """
         Run a specific agent's non-streaming response.
 
@@ -86,17 +79,22 @@ class AgentManager:
         """
         _, agent = self._initialize_user_input(name, user_input)
         response = agent.get_response()
+
         if not response["tool_calls"]:
             return response
 
         tool_calls = response["tool_calls"]
+
         current_messages = agent.get_messages()
         assistant_message = agent.get_model().get_assistant_message(response)
+
         if isinstance(assistant_message, dict):
             current_messages.append(assistant_message)
         if isinstance(assistant_message, list):
             current_messages.extend(assistant_message)
+
         tool_responses = []
+
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
             id, function_name = output["id"], output["name"]
@@ -112,26 +110,44 @@ class AgentManager:
                     and not tool.__name__.startswith("handover_")
                 ):
                     tool_result = tool(**arguments)
+
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
-                        self.agents_chain_list.append(agent)
-                        return self.run_agent(tool_result.name, user_input)
+                        child_response = self.run_agent(tool_result.name, user_input)
 
-                    tool_responses.append(
-                        {
-                            "id": id,
-                            "tool_result": str(tool_result),
-                            "name": function_name,
-                        }
-                    )
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(
+                                    child_response.get("content", child_response)
+                                ),
+                                "name": function_name,
+                            }
+                        )
+                    else:
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(tool_result),
+                                "name": function_name,
+                            }
+                        )
 
                 elif isinstance(tool, Callable) and tool.__name__.startswith(
                     "handover_"
                 ):
                     tool_result = tool()
-                    self.agents_chain_list.append(agent)
-                    return self.run_agent(tool_result, user_input)
+                    child_response = self.run_agent(tool_result, user_input)
+                    tool_responses.append(
+                        {
+                            "id": id,
+                            "tool_result": str(
+                                child_response.get("content", child_response)
+                            ),
+                            "name": function_name,
+                        }
+                    )
 
                 elif isinstance(tool, Container) and (
                     tool.name == function_name and not tool.name.startswith("handover_")
@@ -141,23 +157,27 @@ class AgentManager:
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
-                        self.agents_chain_list.append(agent)
-                        return self.run_agent(tool_result.name, user_input)
-
-                    tool_responses.append(
-                        {
-                            "id": id,
-                            "tool_result": str(tool_result),
-                            "name": function_name,
-                        }
-                    )
+                        child_response = self.run_agent(tool_result.name, user_input)
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(
+                                    child_response.get("content", child_response)
+                                ),
+                                "name": function_name,
+                            }
+                        )
+                    else:
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(tool_result),
+                                "name": function_name,
+                            }
+                        )
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
         response = agent.get_response()
-
-        if self.agents_chain_list:
-            prev_agent = self.agents_chain_list.pop()
-            return self.run_agent(prev_agent.name, agent.get_messages()[1:])
 
         if not response["tool_calls"]:
             return response
@@ -214,25 +234,40 @@ class AgentManager:
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
-                        self.agents_chain_list.append(agent)
-                        yield from self.run_agent_stream(tool_result.name, user_input)
-                        return
+                        child_response = self.run_agent(tool_result.name, user_input)
 
-                    tool_responses.append(
-                        {
-                            "id": id,
-                            "tool_result": str(tool_result),
-                            "name": function_name,
-                        }
-                    )
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(
+                                    child_response.get("content", child_response)
+                                ),
+                                "name": function_name,
+                            }
+                        )
+                    else:
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(tool_result),
+                                "name": function_name,
+                            }
+                        )
 
                 elif isinstance(tool, Callable) and tool.__name__.startswith(
                     "handover_"
                 ):
                     tool_result = tool()
-                    self.agents_chain_list.append(agent)
-                    yield from self.run_agent_stream(tool_result, user_input)
-                    return
+                    child_response = self.run_agent(tool_result, user_input)
+                    tool_responses.append(
+                        {
+                            "id": id,
+                            "tool_result": str(
+                                child_response.get("content", child_response)
+                            ),
+                            "name": function_name,
+                        }
+                    )
 
                 elif isinstance(tool, Container) and (
                     tool.name == function_name and not tool.name.startswith("handover_")
@@ -242,23 +277,25 @@ class AgentManager:
                     if isinstance(tool_result, Agent):
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
-                        self.agents_chain_list.append(agent)
-                        yield from self.run_agent_stream(tool_result.name, user_input)
-                        return
+                        child_response = self.run_agent(tool_result.name, user_input)
 
-                    tool_responses.append(
-                        {
-                            "id": id,
-                            "tool_result": str(tool_result),
-                            "name": function_name,
-                        }
-                    )
-
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(
+                                    child_response.get("content", child_response)
+                                ),
+                                "name": function_name,
+                            }
+                        )
+                    else:
+                        tool_responses.append(
+                            {
+                                "id": id,
+                                "tool_result": str(tool_result),
+                                "name": function_name,
+                            }
+                        )
         self._prepare_final_messages(agent, current_messages, tool_responses)
-
-        if self.agents_chain_list:
-            prev_agent = self.agents_chain_list.pop()
-            yield from self.run_agent_stream(prev_agent.name, agent.get_messages()[1:])
-
         yield from agent.get_stream_response()
         return
