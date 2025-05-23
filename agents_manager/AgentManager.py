@@ -79,7 +79,6 @@ class AgentManager:
         """
         _, agent = self._initialize_user_input(name, user_input)
         response = agent.get_response()
-
         if not response["tool_calls"]:
             return response
 
@@ -115,7 +114,6 @@ class AgentManager:
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
                         child_response = self.run_agent(tool_result.name, user_input)
-
                         tool_responses.append(
                             {
                                 "id": id,
@@ -134,8 +132,9 @@ class AgentManager:
                             }
                         )
 
-                elif isinstance(tool, Callable) and tool.__name__.startswith(
-                    "handover_"
+                elif isinstance(tool, Callable) and (
+                    tool.__name__.startswith("handover_")
+                    and tool.__name__ == function_name
                 ):
                     tool_result = tool()
                     child_response = self.run_agent(tool_result, user_input)
@@ -254,8 +253,9 @@ class AgentManager:
                             }
                         )
 
-                elif isinstance(tool, Callable) and tool.__name__.startswith(
-                    "handover_"
+                elif isinstance(tool, Callable) and (
+                    tool.__name__.startswith("handover_")
+                    and tool.__name__ == function_name
                 ):
                     tool_result = tool()
                     child_response = self.run_agent(tool_result, user_input)
