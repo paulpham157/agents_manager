@@ -93,7 +93,7 @@ class AgentManager:
             current_messages.extend(assistant_message)
 
         tool_responses = []
-
+        print(tool_calls)
         for tool_call in tool_calls:
             output = agent.get_model().get_keys_in_tool_output(tool_call)
             id, function_name = output["id"], output["name"]
@@ -138,6 +138,7 @@ class AgentManager:
                 ):
                     tool_result = tool()
                     child_response = self.run_agent(tool_result, user_input)
+                    print(f"{tool_result} responded with {child_response}")
                     tool_responses.append(
                         {
                             "id": id,
@@ -176,6 +177,9 @@ class AgentManager:
                         )
 
         self._prepare_final_messages(agent, current_messages, tool_responses)
+
+        # agent.set_tools(agent.tools)
+
         response = agent.get_response()
 
         if not response["tool_calls"]:
