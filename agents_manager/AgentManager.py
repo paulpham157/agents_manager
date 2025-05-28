@@ -181,7 +181,7 @@ class AgentManager:
         # agent.set_tools(agent.tools)
 
         response = agent.get_response()
-
+        print(agent.get_messages())
         if not response["tool_calls"]:
             return response
 
