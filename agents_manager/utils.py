@@ -203,7 +203,7 @@ def replace_placeholder(instruction: str, result: bytes) -> str:
     return instruction.replace("{result}", result.decode("utf-8"))
 
 
-def handover(agent_name: str, description: str):
+def handover(agent_name: str, description: str, share_context: bool = False):
     """
     Hands over the task to the given agent.
 
@@ -217,4 +217,6 @@ def handover(agent_name: str, description: str):
 
     handover_inner.__name__ = f"handover_{agent_name}"
     handover_inner.__doc__ = description
+    handover_inner.share_context = share_context
+
     return handover_inner
