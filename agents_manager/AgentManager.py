@@ -2,6 +2,7 @@ import json
 import logging
 from typing import List, Optional, Any, Generator, Dict, Callable
 
+from agents_manager.models import Genai
 from agents_manager.Container import Container
 from agents_manager.utils import write_log
 from agents_manager.Agent import Agent
@@ -62,6 +63,13 @@ class AgentManager:
         if user_input:
             agent.set_user_message(user_input)
         return _, agent
+
+    @staticmethod
+    def get_context(agent: Agent):
+        if type(agent.get_model()) == Genai:
+            return agent.get_messages()
+        else:
+            return agent.get_messages()[1:]
 
     @staticmethod
     def _update_current_message(
@@ -189,7 +197,8 @@ class AgentManager:
 
                     if tool.share_context:
                         child_response = self.run_agent(
-                            tool_result, current_messages[1:]
+                            tool_result,
+                            self.get_context(self.get_agent(tool_result)[1]),
                         )
                     else:
                         child_response = self.run_agent(tool_result, user_input)
@@ -396,7 +405,8 @@ class AgentManager:
 
                     if tool.share_context:
                         child_response = self.run_agent(
-                            tool_result, current_messages[1:]
+                            tool_result,
+                            self.get_context(self.get_agent(tool_result)[1]),
                         )
                     else:
                         child_response = self.run_agent(tool_result, user_input)
