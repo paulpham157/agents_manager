@@ -9,6 +9,8 @@ from tree_agents import (
 )
 from chain_agents import agent6, agent4, agent5, transfer_to_agent5, handover_agent6
 
+from share_context import share_context
+
 STORY = """
 A quiet seed fell into rich soil.
 Rain came gently, and the sun followed.
@@ -58,3 +60,13 @@ def test_chain_handover():
 
     assert resp["secret"] == "chaining_agents_works"
     assert resp["tool_name"] == "handover_agent6"
+
+
+def test_share_context():
+    agent_manager = share_context()
+
+    resp = agent_manager.run_agent(
+        {"role": "user", "content": "Do as the system prompt says"}
+    )
+
+    assert resp["content"] == "489346111"

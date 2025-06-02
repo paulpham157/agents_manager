@@ -66,6 +66,20 @@ class AgentManager:
             current_messages.extend(tool_response)
         agent.set_messages(current_messages)
 
+    @staticmethod
+    def _update_current_message(
+        agent: Agent, current_messages: list, tool_responses: list, tool_call: Dict
+    ):
+        current_messages.append(tool_call)
+
+        tool_response = agent.get_model().get_tool_message(tool_responses)
+        if isinstance(tool_response, dict):
+            current_messages.append(tool_response)
+        if isinstance(tool_response, list):
+            current_messages.extend(tool_response)
+
+        agent.set_messages(current_messages)
+
     def run_agent(self, name: str, user_input: Optional[Any] = None) -> Dict:
         """
         Run a specific agent's non-streaming response.
@@ -78,6 +92,7 @@ class AgentManager:
             Any: The agent's response.
         """
         _, agent = self._initialize_user_input(name, user_input)
+
         response = agent.get_response()
         if not response["tool_calls"]:
             return response
@@ -87,14 +102,7 @@ class AgentManager:
         current_messages = agent.get_messages()
         assistant_message = agent.get_model().get_assistant_message(response)
 
-        if isinstance(assistant_message, dict):
-            current_messages.append(assistant_message)
-        if isinstance(assistant_message, list):
-            current_messages.extend(assistant_message)
-
-        tool_responses = []
-
-        for tool_call in tool_calls:
+        for i, tool_call in enumerate(tool_calls):
             output = agent.get_model().get_keys_in_tool_output(tool_call)
             id, function_name = output["id"], output["name"]
             arguments = (
@@ -114,38 +122,61 @@ class AgentManager:
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
                         child_response = self.run_agent(tool_result.name, user_input)
-                        tool_responses.append(
-                            {
-                                "id": id,
-                                "tool_result": str(
-                                    child_response.get("content", child_response)
-                                ),
-                                "name": function_name,
-                            }
-                        )
-                    else:
-                        tool_responses.append(
-                            {
-                                "id": id,
-                                "tool_result": str(tool_result),
-                                "name": function_name,
-                            }
-                        )
 
-                elif isinstance(tool, Callable) and (
-                    tool.__name__.startswith("handover_")
-                    and tool.__name__ == function_name
-                ):
-                    tool_result = tool()
-                    child_response = self.run_agent(tool_result, user_input)
-                    tool_responses.append(
-                        {
+                        tool_response = {
                             "id": id,
                             "tool_result": str(
                                 child_response.get("content", child_response)
                             ),
                             "name": function_name,
                         }
+
+                    else:
+
+                        tool_response = {
+                            "id": id,
+                            "tool_result": str(tool_result),
+                            "name": function_name,
+                        }
+
+                    current_tool_call = {
+                        "role": "assistant",
+                        "content": assistant_message["content"],
+                        "tool_calls": [assistant_message["tool_calls"][i]],
+                    }
+                    self._update_current_message(
+                        agent, current_messages, [tool_response], current_tool_call
+                    )
+
+                elif isinstance(tool, Callable) and (
+                    tool.__name__.startswith("handover_")
+                    and tool.__name__ == function_name
+                ):
+                    tool_result = tool()
+
+                    if tool.share_context:
+                        child_response = self.run_agent(
+                            tool_result, current_messages[1:]
+                        )
+                    else:
+                        child_response = self.run_agent(tool_result, user_input)
+
+                    tool_response = {
+                        "id": id,
+                        "tool_result": str(
+                            child_response.get("content", child_response)
+                        ),
+                        "name": function_name,
+                    }
+
+                    current_tool_call = {
+                        "role": "assistant",
+                        "content": assistant_message["content"],
+                        "tool_calls": [assistant_message["tool_calls"][i]],
+                    }
+
+                    self._update_current_message(
+                        agent, current_messages, [tool_response], current_tool_call
                     )
 
                 elif isinstance(tool, Container) and (
@@ -157,27 +188,32 @@ class AgentManager:
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
                         child_response = self.run_agent(tool_result.name, user_input)
-                        tool_responses.append(
-                            {
-                                "id": id,
-                                "tool_result": str(
-                                    child_response.get("content", child_response)
-                                ),
-                                "name": function_name,
-                            }
-                        )
+
+                        tool_response = {
+                            "id": id,
+                            "tool_result": str(
+                                child_response.get("content", child_response)
+                            ),
+                            "name": function_name,
+                        }
                     else:
-                        tool_responses.append(
-                            {
-                                "id": id,
-                                "tool_result": str(tool_result),
-                                "name": function_name,
-                            }
-                        )
+                        tool_response = {
+                            "id": id,
+                            "tool_result": str(tool_result),
+                            "name": function_name,
+                        }
 
-        self._prepare_final_messages(agent, current_messages, tool_responses)
+                    current_tool_call = {
+                        "role": "assistant",
+                        "content": assistant_message["content"],
+                        "tool_calls": [assistant_message["tool_calls"][i]],
+                    }
+
+                    self._update_current_message(
+                        agent, current_messages, [tool_response], current_tool_call
+                    )
+
         response = agent.get_response()
-
         if not response["tool_calls"]:
             return response
 
