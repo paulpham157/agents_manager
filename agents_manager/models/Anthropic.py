@@ -39,7 +39,7 @@ class Anthropic(Model):
             model=self.name,
             system=self.instruction,
             messages=self.get_messages(),
-            **self.kwargs
+            **self.kwargs,
         )
 
         return {
@@ -54,37 +54,58 @@ class Anthropic(Model):
         """
 
         with self.client.messages.stream(
-                model=self.name,
-                system=self.instruction,
-                messages=self.get_messages(),
-                **self.kwargs
+            model=self.name,
+            system=self.instruction,
+            messages=self.get_messages(),
+            **self.kwargs,
         ) as stream:
             current_content_blocks = {}
             accumulated_json = {}
-            result = {
-                "tool_calls": [],
-                "content": ""
-            }
+            result = {"tool_calls": [], "content": ""}
 
             current_tool = None  # Track tool call metadata, but don't accumulate input
 
             for event in stream:
-                result = {"content": None, "tool_calls": None}  # Fresh result dict each iteration
+                result = {
+                    "content": None,
+                    "tool_calls": None,
+                }  # Fresh result dict each iteration
 
                 # Handle text tokens as they arrive
-                if event.type == "content_block_delta" and event.delta.type == "text_delta":
-                    result["content"] = event.delta.text  # Yield only the current text token
+                if (
+                    event.type == "content_block_delta"
+                    and event.delta.type == "text_delta"
+                ):
+                    result["content"] = (
+                        event.delta.text
+                    )  # Yield only the current text token
 
                 # Handle tool call start
-                elif event.type == "content_block_start" and event.content_block.type == "tool_use":
-                    current_tool = {"id": event.content_block.id, "name": event.content_block.name, "input": None}
-                    result["tool_calls"] = current_tool  # Yield tool metadata without input yet
+                elif (
+                    event.type == "content_block_start"
+                    and event.content_block.type == "tool_use"
+                ):
+                    current_tool = {
+                        "id": event.content_block.id,
+                        "name": event.content_block.name,
+                        "input": None,
+                    }
+                    result["tool_calls"] = (
+                        current_tool  # Yield tool metadata without input yet
+                    )
 
                 # Handle tool call input tokens
-                elif event.type == "content_block_delta" and event.delta.type == "input_json_delta" and current_tool:
+                elif (
+                    event.type == "content_block_delta"
+                    and event.delta.type == "input_json_delta"
+                    and current_tool
+                ):
                     # Yield the raw partial_json token as it arrives
-                    result["tool_calls"] = {"id": current_tool["id"], "name": current_tool["name"],
-                                            "input": event.delta.partial_json}
+                    result["tool_calls"] = {
+                        "id": current_tool["id"],
+                        "name": current_tool["name"],
+                        "input": event.delta.partial_json,
+                    }
 
                 # Handle block completion
                 elif event.type == "content_block_stop":
@@ -122,7 +143,10 @@ class Anthropic(Model):
 
                 # Handle text deltas
                 if delta.type == "text_delta":
-                    if index in current_content_blocks and current_content_blocks[index].type == "text":
+                    if (
+                        index in current_content_blocks
+                        and current_content_blocks[index].type == "text"
+                    ):
                         if not hasattr(current_content_blocks[index], "text"):
                             current_content_blocks[index].text = ""
                         current_content_blocks[index].text += delta.text
@@ -185,14 +209,14 @@ class Anthropic(Model):
                 "type": "object",
                 "properties": "{parameters}",
                 "required": "{required}",
-            }
+            },
         }
 
     def get_keys_in_tool_output(self, tool_call: Any) -> Dict[str, Any]:
         return {
             "id": tool_call.id,
             "name": tool_call.name,
-            "arguments": tool_call.input
+            "arguments": tool_call.input,
         }
 
     @staticmethod
@@ -201,7 +225,7 @@ class Anthropic(Model):
             "type": "tool_use",
             "id": "{id}",
             "name": "{name}",
-            "input": "{arguments}"
+            "input": "{arguments}",
         }
 
     def get_assistant_message(self, response: Any):
@@ -211,12 +235,26 @@ class Anthropic(Model):
         for tool_call in tool_calls:
             output = self.get_keys_in_tool_output(tool_call)
             populated_data = populate_template(self._get_tool_call_format(), output)
-            output_tool_calls.append(populated_data)
+            output_tool_calls.append(
+                {
+                    "role": "assistant",
+                    "content": (
+                        [populated_data]
+                        if type(populated_data) != list
+                        else populated_data
+                    ),
+                }
+            )
 
-        return {
-            "role": "assistant",
-            "content": output_tool_calls,
-        }
+        if tool_calls:
+            return output_tool_calls
+        else:
+            return [
+                {
+                    "role": "assistant",
+                    "content": [],
+                }
+            ]
 
     def get_tool_message(self, tool_responses: List[Dict[str, Any]]) -> Any:
 
@@ -230,10 +268,7 @@ class Anthropic(Model):
                 }
             )
 
-        return {
-            "role": "user",
-            "content": tool_results
-        }
+        return {"role": "user", "content": tool_results}
 
     def set_system_message(self, message: str) -> None:
         self.instruction = message
@@ -257,9 +292,7 @@ class Anthropic(Model):
                 json_tools.append(function_to_json(tool, self.get_tool_format()))
             if isinstance(tool, Container):
                 json_tools.append(container_to_json(tool, self.get_tool_format()))
-        self.kwargs.update({
-            "tools": json_tools
-        })
+        self.kwargs.update({"tools": json_tools})
 
     def set_output_format(self, output_format: Callable) -> None:
         pass
