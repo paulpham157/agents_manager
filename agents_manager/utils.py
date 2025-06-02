@@ -220,3 +220,9 @@ def handover(agent_name: str, description: str, share_context: bool = False):
     handover_inner.share_context = share_context
 
     return handover_inner
+
+
+def write_log(log, logger, message, level="INFO"):
+    if log:
+        if level == "INFO":
+            logger.info(message)

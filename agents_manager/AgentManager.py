@@ -3,6 +3,7 @@ import logging
 from typing import List, Optional, Any, Generator, Dict, Callable
 
 from agents_manager.Container import Container
+from agents_manager.utils import write_log
 from agents_manager.Agent import Agent
 
 
@@ -15,8 +16,7 @@ class AgentManager:
         self.log = log
         self.logger = logging.getLogger(__name__)
 
-        if self.log:
-            self.logger.info("AgentManager log setup")
+        write_log(self.log, self.logger, "AgentManager log setup")
 
         self.agents: List[Agent] = []
 
@@ -90,15 +90,15 @@ class AgentManager:
         """
         _, agent = self._initialize_user_input(name, user_input)
 
-        if self.log:
-            self.logger.info(f"Executing agent: {agent.name}")
+        write_log(self.log, self.logger, f"Executing agent: {agent.name}")
 
         response = agent.get_response()
         if not response["tool_calls"]:
-            if self.log:
-                self.logger.info(
-                    f"Agent {agent.name} returned a response without tool calls."
-                )
+            write_log(
+                self.log,
+                self.logger,
+                f"Agent {agent.name} returned a response without tool calls.",
+            )
             return response
 
         tool_calls = response["tool_calls"]
@@ -114,18 +114,22 @@ class AgentManager:
                 else output["arguments"]
             )
 
-            if self.log:
-                self.logger.info(
-                    f"Preparing to invoke tool '{function_name}' with arguments: {arguments}"
-                )
+            write_log(
+                self.log,
+                self.logger,
+                f"Preparing to invoke tool '{function_name}' with arguments: {arguments}",
+            )
 
             for tool in agent.tools:
                 if isinstance(tool, Callable) and (
                     tool.__name__ == function_name
                     and not tool.__name__.startswith("handover_")
                 ):
-                    if self.log:
-                        self.logger.info(f"Invoking callable tool: {tool.__name__}")
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Invoking callable tool: {tool.__name__}",
+                    )
 
                     tool_result = tool(**arguments)
 
@@ -133,10 +137,11 @@ class AgentManager:
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
 
-                        if self.log:
-                            self.logger.info(
-                                f"Delegating execution to nested agent: {tool_result.name}"
-                            )
+                        write_log(
+                            self.log,
+                            self.logger,
+                            f"Delegating execution to nested agent: {tool_result.name}",
+                        )
 
                         child_response = self.run_agent(tool_result.name, user_input)
 
@@ -158,24 +163,29 @@ class AgentManager:
                         agent, current_messages, [tool_response], assistant_message[i]
                     )
 
-                    if self.log:
-                        self.logger.info(
-                            f"Tool '{tool.__name__}' completed successfully."
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Tool '{tool.__name__}' completed successfully.",
+                    )
 
                 elif isinstance(tool, Callable) and (
                     tool.__name__.startswith("handover_")
                     and tool.__name__ == function_name
                 ):
-                    if self.log:
-                        self.logger.info(f"Invoking handover tool: {tool.__name__}")
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Invoking handover tool: {tool.__name__}",
+                    )
 
                     tool_result = tool()
 
-                    if self.log:
-                        self.logger.info(
-                            f"Delegating execution to agent: {tool_result}"
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Delegating execution to agent: {tool_result}",
+                    )
 
                     if tool.share_context:
                         child_response = self.run_agent(
@@ -196,18 +206,20 @@ class AgentManager:
                         agent, current_messages, [tool_response], assistant_message[i]
                     )
 
-                    if self.log:
-                        self.logger.info(
-                            f"Handover tool '{tool.__name__}' completed successfully."
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Handover tool '{tool.__name__}' completed successfully.",
+                    )
 
                 elif isinstance(tool, Container) and (
                     tool.name == function_name and not tool.name.startswith("handover_")
                 ):
-                    if self.log:
-                        self.logger.info(
-                            f"Invoking container tool: {tool.name} with arguments: {arguments}"
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Invoking container tool: {tool.name} with arguments: {arguments}",
+                    )
 
                     tool_result = tool.run(arguments)
 
@@ -215,10 +227,11 @@ class AgentManager:
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
 
-                        if self.log:
-                            self.logger.info(
-                                f"Delegating execution to nested agent from container: {tool_result.name}"
-                            )
+                        write_log(
+                            self.log,
+                            self.logger,
+                            f"Delegating execution to nested agent from container: {tool_result.name}",
+                        )
 
                         child_response = self.run_agent(tool_result.name, user_input)
 
@@ -240,17 +253,19 @@ class AgentManager:
                         agent, current_messages, [tool_response], assistant_message[i]
                     )
 
-                    if self.log:
-                        self.logger.info(
-                            f"Container tool '{tool.name}' completed successfully."
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Container tool '{tool.name}' completed successfully.",
+                    )
 
         response = agent.get_response()
         if not response["tool_calls"]:
-            if self.log:
-                self.logger.info(
-                    f"Agent {agent.name} completed execution and returned its final response."
-                )
+            write_log(
+                self.log,
+                self.logger,
+                f"Agent {agent.name} completed execution and returned its final response.",
+            )
             return response
 
     def run_agent_stream(
@@ -271,24 +286,25 @@ class AgentManager:
         position, agent = self._initialize_user_input(name, user_input)
         initial_tools = agent.get_tools()
 
-        if self.log:
-            self.logger.info(f"Executing agent (streaming): {agent.name}")
+        write_log(self.log, self.logger, f"Executing agent (streaming): {agent.name}")
 
         if not initial_tools and position == 0:
-            if self.log:
-                self.logger.info(
-                    f"Agent {agent.name} has no tools and is at initial position; streaming response directly."
-                )
+            write_log(
+                self.log,
+                self.logger,
+                f"Agent {agent.name} has no tools and is at initial position; streaming response directly.",
+            )
             yield from agent.get_stream_response()
             return
 
         response = agent.get_response()
 
         if not response["tool_calls"]:
-            if self.log:
-                self.logger.info(
-                    f"Agent {agent.name} returned a response without tool calls."
-                )
+            write_log(
+                self.log,
+                self.logger,
+                f"Agent {agent.name} returned a response without tool calls.",
+            )
             yield {"content": response["content"]}
             return
 
@@ -305,18 +321,22 @@ class AgentManager:
                 else output["arguments"]
             )
 
-            if self.log:
-                self.logger.info(
-                    f"Preparing to invoke tool '{function_name}' with arguments: {arguments}"
-                )
+            write_log(
+                self.log,
+                self.logger,
+                f"Preparing to invoke tool '{function_name}' with arguments: {arguments}",
+            )
 
             for tool in agent.tools:
                 if isinstance(tool, Callable) and (
                     tool.__name__ == function_name
                     and not tool.__name__.startswith("handover_")
                 ):
-                    if self.log:
-                        self.logger.info(f"Invoking callable tool: {tool.__name__}")
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Invoking callable tool: {tool.__name__}",
+                    )
 
                     tool_result = tool(**arguments)
 
@@ -324,10 +344,11 @@ class AgentManager:
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
 
-                        if self.log:
-                            self.logger.info(
-                                f"Delegating execution to nested agent: {tool_result.name}"
-                            )
+                        write_log(
+                            self.log,
+                            self.logger,
+                            f"Delegating execution to nested agent: {tool_result.name}",
+                        )
 
                         child_response = self.run_agent(tool_result.name, user_input)
 
@@ -349,24 +370,29 @@ class AgentManager:
                         agent, current_messages, [tool_response], assistant_message[i]
                     )
 
-                    if self.log:
-                        self.logger.info(
-                            f"Tool '{tool.__name__}' completed successfully."
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Tool '{tool.__name__}' completed successfully.",
+                    )
 
                 elif isinstance(tool, Callable) and (
                     tool.__name__.startswith("handover_")
                     and tool.__name__ == function_name
                 ):
-                    if self.log:
-                        self.logger.info(f"Invoking handover tool: {tool.__name__}")
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Invoking handover tool: {tool.__name__}",
+                    )
 
                     tool_result = tool()
 
-                    if self.log:
-                        self.logger.info(
-                            f"Delegating execution to agent: {tool_result}"
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Delegating execution to agent: {tool_result}",
+                    )
 
                     if tool.share_context:
                         child_response = self.run_agent(
@@ -387,18 +413,20 @@ class AgentManager:
                         agent, current_messages, [tool_response], assistant_message[i]
                     )
 
-                    if self.log:
-                        self.logger.info(
-                            f"Handover tool '{tool.__name__}' completed successfully."
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Handover tool '{tool.__name__}' completed successfully.",
+                    )
 
                 elif isinstance(tool, Container) and (
                     tool.name == function_name and not tool.name.startswith("handover_")
                 ):
-                    if self.log:
-                        self.logger.info(
-                            f"Invoking container tool: {tool.name} with arguments: {arguments}"
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Invoking container tool: {tool.name} with arguments: {arguments}",
+                    )
 
                     tool_result = tool.run(arguments)
 
@@ -406,10 +434,11 @@ class AgentManager:
                         if not self.get_agent(tool_result.name)[1]:
                             self.add_agent(tool_result)
 
-                        if self.log:
-                            self.logger.info(
-                                f"Delegating execution to nested agent from container: {tool_result.name}"
-                            )
+                        write_log(
+                            self.log,
+                            self.logger,
+                            f"Delegating execution to nested agent from container: {tool_result.name}",
+                        )
 
                         child_response = self.run_agent(tool_result.name, user_input)
 
@@ -431,13 +460,15 @@ class AgentManager:
                         agent, current_messages, [tool_response], assistant_message[i]
                     )
 
-                    if self.log:
-                        self.logger.info(
-                            f"Container tool '{tool.name}' completed successfully."
-                        )
+                    write_log(
+                        self.log,
+                        self.logger,
+                        f"Container tool '{tool.name}' completed successfully.",
+                    )
 
-        if self.log:
-            self.logger.info(f"Streaming final response from agent: {agent.name}")
+        write_log(
+            self.log, self.logger, f"Streaming final response from agent: {agent.name}"
+        )
 
         yield from agent.get_stream_response()
         return
