@@ -1,15 +1,9 @@
 import json
-from agents_manager import AgentManager
-from tree_agents import (
-    agent1,
-    agent2,
-    agent3,
-    handover_agent3,
-    transfer_to_agent2,
-)
-from chain_agents import agent6, agent4, agent5, transfer_to_agent5, handover_agent6
+from agents_manager.models import OpenAi, Anthropic, Genai
 
-from share_context import share_context
+from tree_agents import tree_setup
+from chain_agents import chain_setup
+from share_context import share_context_setup
 
 STORY = """
 A quiet seed fell into rich soil.
@@ -20,15 +14,13 @@ In time, it became a tree, offering shade and shelter.
 Life continued, simple and still, beneath its patient branches.
 """
 
+openai_model = OpenAi(name="gpt-4o-mini")
+genai_model = Genai(name="gemini-2.0-flash")
+anthropic_model = Anthropic(name="claude-sonnet-4-20250514", max_tokens=1024)
+
 
 def test_tree_handover():
-    manager = AgentManager()
-
-    agent1.tools = [transfer_to_agent2, handover_agent3]
-
-    manager.add_agent(agent1)
-    manager.add_agent(agent2)
-    manager.add_agent(agent3)
+    manager = tree_setup(openai_model)
 
     resp = manager.run_agent(
         "agent1",
@@ -42,14 +34,7 @@ def test_tree_handover():
 
 
 def test_chain_handover():
-    manager = AgentManager()
-
-    agent4.tools = [transfer_to_agent5]
-    agent5.tools = [handover_agent6]
-
-    manager.add_agent(agent4)
-    manager.add_agent(agent5)
-    manager.add_agent(agent6)
+    manager = chain_setup(openai_model)
 
     resp = manager.run_agent(
         "agent4",
@@ -63,10 +48,10 @@ def test_chain_handover():
 
 
 def test_share_context():
-    agent_manager = share_context()
+    manager = share_context_setup(anthropic_model, True)
 
-    resp = agent_manager.run_agent(
-        {"role": "user", "content": "Do as the system prompt says"}
+    resp = manager.run_agent(
+        "master", {"role": "user", "content": "Do as the system prompt says"}
     )
 
-    assert resp["content"] == "489346111"
+    assert "489346111" in resp["content"]

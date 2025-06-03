@@ -41,7 +41,7 @@ class OpenAi(Model):
                 model=self.name,  # type: str
                 messages=self.get_messages(),  # type: List[Dict[str, str]]
                 **kwargs,  # type: Dict[str, Any],
-                stream=False
+                stream=False,
             )
         else:
             response = self.client.beta.chat.completions.parse(
@@ -75,7 +75,7 @@ class OpenAi(Model):
                 model=self.name,  # type: str
                 messages=self.get_messages(),  # type: List[Dict[str, str]]
                 **kwargs,  # type: Dict[str, Any]
-                stream=True
+                stream=True,
             )
             final_tool_calls = {}
             result = {
@@ -87,7 +87,9 @@ class OpenAi(Model):
                     index = tool_call.index
                     if index not in final_tool_calls:
                         final_tool_calls[index] = tool_call
-                    final_tool_calls[index].function.arguments += tool_call.function.arguments
+                    final_tool_calls[
+                        index
+                    ].function.arguments += tool_call.function.arguments
                     result["tool_calls"] = final_tool_calls
                 if chunk.choices[0].delta.content is not None:
                     result["content"] = chunk.choices[0].delta.content
@@ -95,10 +97,10 @@ class OpenAi(Model):
             return
         else:
             with self.client.beta.chat.completions.stream(
-                    model=self.name,  # type: str
-                    messages=self.get_messages(),  # type: List[Dict[str, str]]
-                    response_format=output_format,
-                    **kwargs,  # type: Dict[str, Any]
+                model=self.name,  # type: str
+                messages=self.get_messages(),  # type: List[Dict[str, str]]
+                response_format=output_format,
+                **kwargs,  # type: Dict[str, Any]
             ) as response:
                 result = {
                     "tool_calls": [],
@@ -131,7 +133,7 @@ class OpenAi(Model):
                     "additionalProperties": False,
                 },
                 "strict": True,
-            }
+            },
         }
 
     @staticmethod
@@ -139,17 +141,14 @@ class OpenAi(Model):
         return {
             "id": "{id}",
             "type": "function",
-            "function": {
-                "name": "{name}",
-                "arguments": "{arguments}"
-            }
+            "function": {"name": "{name}", "arguments": "{arguments}"},
         }
 
     def get_keys_in_tool_output(self, tool_call: Any) -> Dict[str, Any]:
         return {
             "id": tool_call.id,
             "name": tool_call.function.name,
-            "arguments": tool_call.function.arguments
+            "arguments": tool_call.function.arguments,
         }
 
     def get_assistant_message(self, response: Any):
@@ -159,13 +158,28 @@ class OpenAi(Model):
         for tool_call in tool_calls:
             output = self.get_keys_in_tool_output(tool_call)
             populated_data = populate_template(self._get_tool_call_format(), output)
-            output_tool_calls.append(populated_data)
+            output_tool_calls.append(
+                {
+                    "role": "assistant",
+                    "content": response["content"] or "",
+                    "tool_calls": (
+                        [populated_data]
+                        if type(populated_data) != list
+                        else populated_data
+                    ),
+                }
+            )
 
-        return {
-            "role": "assistant",
-            "content": response["content"] or "",
-            "tool_calls": output_tool_calls,
-        }
+        if tool_calls:
+            return output_tool_calls
+        else:
+            [
+                {
+                    "role": "assistant",
+                    "content": response["content"] or "",
+                    "tool_calls": [],
+                }
+            ]
 
     def get_tool_message(self, tool_responses: List[Dict[str, Any]]) -> Any:
         tool_results = []
@@ -181,10 +195,14 @@ class OpenAi(Model):
         return tool_results
 
     def set_system_message(self, message: str) -> None:
-        self.set_messages([{
-            "role": "system",
-            "content": message,
-        }])
+        self.set_messages(
+            [
+                {
+                    "role": "system",
+                    "content": message,
+                }
+            ]
+        )
 
     def set_user_message(self, message: str) -> None:
         current_messages = self.get_messages() or []
@@ -206,11 +224,7 @@ class OpenAi(Model):
                 json_tools.append(function_to_json(tool, self.get_tool_format()))
             if isinstance(tool, Container):
                 json_tools.append(container_to_json(tool, self.get_tool_format()))
-        self.kwargs.update({
-            "tools": json_tools
-        })
+        self.kwargs.update({"tools": json_tools})
 
     def set_output_format(self, output_format: Callable) -> None:
-        self.kwargs.update({
-            "output_format": output_format
-        })
+        self.kwargs.update({"output_format": output_format})

@@ -27,7 +27,9 @@ class Genai(Model):
         if "api_key" in self.kwargs:
             args["api_key"] = self.kwargs.pop("api_key")
         if "api_version" in self.kwargs:
-            args["api_version"] = types.HttpOptions(api_version=self.kwargs.pop("api_version"))
+            args["api_version"] = types.HttpOptions(
+                api_version=self.kwargs.pop("api_version")
+            )
         if "project" in self.kwargs:
             args["project"] = self.kwargs.pop("project")
         if "location" in self.kwargs:
@@ -38,9 +40,7 @@ class Genai(Model):
         self.instructions = ""
         self.tools = []
 
-        self.client = genai.Client(
-            **args
-        )
+        self.client = genai.Client(**args)
 
     def generate_response(self) -> Dict:
         """
@@ -59,16 +59,20 @@ class Genai(Model):
         }
         if not self.has_tool_function_response(self.get_messages()):
             if tools:
-                config.update({
-                    "tools": [{"function_declarations": tools}],
-                    "automatic_function_calling": {"disable": True},
-                })
+                config.update(
+                    {
+                        "tools": [{"function_declarations": tools}],
+                        "automatic_function_calling": {"disable": True},
+                    }
+                )
 
         if output_format:
-            config.update({
-                'response_mime_type': 'application/json',
-                'response_schema': output_format,
-            })
+            config.update(
+                {
+                    "response_mime_type": "application/json",
+                    "response_schema": output_format,
+                }
+            )
 
         config.update(kwargs)
 
@@ -100,16 +104,20 @@ class Genai(Model):
         }
         if not self.has_tool_function_response(self.get_messages()):
             if tools:
-                config.update({
-                    "tools": [{"function_declarations": tools}],
-                    "automatic_function_calling": {"disable": True},
-                })
+                config.update(
+                    {
+                        "tools": [{"function_declarations": tools}],
+                        "automatic_function_calling": {"disable": True},
+                    }
+                )
 
         if output_format:
-            config.update({
-                'response_mime_type': 'application/json',
-                'response_schema': output_format,
-            })
+            config.update(
+                {
+                    "response_mime_type": "application/json",
+                    "response_schema": output_format,
+                }
+            )
 
         config.update(kwargs)
         response = self.client.models.generate_content_stream(
@@ -139,9 +147,9 @@ class Genai(Model):
         last_message = messages[-1]
 
         return (
-                last_message.get("role") == "tool" and
-                isinstance(last_message.get("content"), list) and
-                any("function_response" in item for item in last_message["content"])
+            last_message.get("role") == "tool"
+            and isinstance(last_message.get("content"), list)
+            and any("function_response" in item for item in last_message["content"])
         )
 
     @staticmethod
@@ -168,36 +176,42 @@ class Genai(Model):
                         parts.append(types.Part.from_text(text=part["text"]))
                     elif "file_data" in part:
                         file_data = part["file_data"]
-                        parts.append(types.Part.from_uri(
-                            uri=file_data["file_uri"],
-                            mime_type=file_data["mime_type"]
-                        ))
+                        parts.append(
+                            types.Part.from_uri(
+                                uri=file_data["file_uri"],
+                                mime_type=file_data["mime_type"],
+                            )
+                        )
                     elif "inline_data" in part:
                         inline_data = part["inline_data"]
-                        parts.append(types.Part.from_data(
-                            data=inline_data["data"],  # Base64-encoded string or similar
-                            mime_type=inline_data["mime_type"]
-                        ))
+                        parts.append(
+                            types.Part.from_data(
+                                data=inline_data[
+                                    "data"
+                                ],  # Base64-encoded string or similar
+                                mime_type=inline_data["mime_type"],
+                            )
+                        )
                     elif "function_response" in part:
                         function_response = part["function_response"]
                         name = function_response["name"]
                         response = function_response["response"]
-                        parts.append(types.Part.from_function_response(
-                            name=name,
-                            response=response
-                        ))
+                        parts.append(
+                            types.Part.from_function_response(
+                                name=name, response=response
+                            )
+                        )
                     elif "function_call" in part:
                         function_call = part["function_call"]
                         name = function_call["name"]
                         args = function_call["args"]
-                        parts.append(types.Part.from_function_call(
-                            name=name,
-                            args=args,
-                        ))
-            contents.append(types.Content(
-                parts=parts,
-                role=message["role"]
-            ))
+                        parts.append(
+                            types.Part.from_function_call(
+                                name=name,
+                                args=args,
+                            )
+                        )
+            contents.append(types.Content(parts=parts, role=message["role"]))
         return contents
 
     def get_tool_format(self) -> Dict[str, Any]:
@@ -207,8 +221,8 @@ class Genai(Model):
             "parameters": {
                 "type": "object",
                 "properties": "{parameters}",
-                "required": "{required}"
-            }
+                "required": "{required}",
+            },
         }
 
     @staticmethod
@@ -216,18 +230,11 @@ class Genai(Model):
         return {
             "id": "{id}",
             "type": "function",
-            "function": {
-                "name": "{name}",
-                "arguments": "{arguments}"
-            }
+            "function": {"name": "{name}", "arguments": "{arguments}"},
         }
 
     def get_keys_in_tool_output(self, tool_call: Any) -> Dict[str, Any]:
-        return {
-            "id": tool_call.id,
-            "name": tool_call.name,
-            "arguments": tool_call.args
-        }
+        return {"id": tool_call.id, "name": tool_call.name, "arguments": tool_call.args}
 
     @staticmethod
     def _content_to_json(content):
@@ -237,18 +244,16 @@ class Genai(Model):
             if part.function_call:
                 function_call_dict = {
                     "name": part.function_call.name,
-                    "args": part.function_call.args
+                    "args": part.function_call.args,
                 }
                 part_dict["function_call"] = function_call_dict
             if part_dict:
-                parts_list.append(part_dict)
+                parts_list.append({"role": content.role, "content": [part_dict]})
 
-        contents = [{
-            "role": content.role,
-            "content": parts_list
-        }]
-
-        return contents
+        if parts_list:
+            return parts_list
+        else:
+            return [{"role": content.role, "content": []}]
 
     def get_assistant_message(self, response: Any):
         return self._content_to_json(response["candidates"][0].content)
@@ -257,14 +262,16 @@ class Genai(Model):
         tool_results = {}
         content = []
         for tool_response in tool_responses:
-            content.append({
-                "function_response": {
-                    "name": tool_response["name"],
-                    "response": {
-                        "result": tool_response["tool_result"],
-                    },
+            content.append(
+                {
+                    "function_response": {
+                        "name": tool_response["name"],
+                        "response": {
+                            "result": tool_response["tool_result"],
+                        },
+                    }
                 }
-            })
+            )
         tool_results["role"] = "tool"
         tool_results["content"] = content
 
@@ -292,11 +299,7 @@ class Genai(Model):
                 json_tools.append(function_to_json(tool, self.get_tool_format()))
             if isinstance(tool, Container):
                 json_tools.append(container_to_json(tool, self.get_tool_format()))
-        self.kwargs.update({
-            "tools": json_tools
-        })
+        self.kwargs.update({"tools": json_tools})
 
     def set_output_format(self, output_format: Callable) -> None:
-        self.kwargs.update({
-            "output_format": output_format
-        })
+        self.kwargs.update({"output_format": output_format})
