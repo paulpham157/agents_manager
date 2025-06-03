@@ -65,11 +65,11 @@ class AgentManager:
         return _, agent
 
     @staticmethod
-    def get_context(agent: Agent):
+    def get_context(agent: Agent, current_messages: list):
         if type(agent.get_model()) == Genai:
-            return agent.get_messages()
+            return current_messages
         else:
-            return agent.get_messages()[1:]
+            return current_messages[1:]
 
     @staticmethod
     def _update_current_message(
@@ -198,7 +198,9 @@ class AgentManager:
                     if tool.share_context:
                         child_response = self.run_agent(
                             tool_result,
-                            self.get_context(self.get_agent(tool_result)[1]),
+                            self.get_context(
+                                self.get_agent(tool_result)[1], current_messages
+                            ),
                         )
                     else:
                         child_response = self.run_agent(tool_result, user_input)
@@ -406,7 +408,9 @@ class AgentManager:
                     if tool.share_context:
                         child_response = self.run_agent(
                             tool_result,
-                            self.get_context(self.get_agent(tool_result)[1]),
+                            self.get_context(
+                                self.get_agent(tool_result)[1], current_messages
+                            ),
                         )
                     else:
                         child_response = self.run_agent(tool_result, user_input)
