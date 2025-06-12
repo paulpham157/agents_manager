@@ -42,9 +42,11 @@ class Anthropic(Model):
             **self.kwargs,
         )
 
+        con = self.extract_content(message, "text")
+
         return {
             "tool_calls": self.extract_content(message, "tool_use"),
-            "content": self.extract_content(message, "text")[0].text,
+            "content": con[0].text if con else "",
         }
 
     def generate_stream_response(self) -> Generator[Dict, None, None]:
@@ -113,6 +115,14 @@ class Anthropic(Model):
                         # No input to finalize since we're not appending; just clear the tool
                         current_tool = None
                     # No content to yield here since we're not accumulating
+
+                elif event.type == "message_stop":
+                    con = self.extract_content(event.message, "text")
+
+                    result["content"] = con[0].text if con else ""
+                    result["tool_calls"] = self.extract_content(
+                        event.message, "tool_use"
+                    )
 
                 # Yield the result with the current token (if any)
                 if result["content"] or result["tool_calls"]:

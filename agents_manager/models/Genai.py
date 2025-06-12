@@ -129,6 +129,7 @@ class Genai(Model):
         result = {
             "tool_calls": [],
             "content": "",
+            "candidate": "",
         }
         for chunk in response:
             if chunk.function_calls:
@@ -136,6 +137,8 @@ class Genai(Model):
                 result["tool_calls"] = final_tool_calls
             if chunk.text is not None:
                 result["content"] = chunk.text
+            if chunk.candidates:
+                result["candidates"] = chunk.candidates
             yield result
         return
 

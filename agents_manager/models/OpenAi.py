@@ -90,7 +90,7 @@ class OpenAi(Model):
                     final_tool_calls[
                         index
                     ].function.arguments += tool_call.function.arguments
-                    result["tool_calls"] = final_tool_calls
+                    result["tool_calls"] = [v for _, v in final_tool_calls.items()]
                 if chunk.choices[0].delta.content is not None:
                     result["content"] = chunk.choices[0].delta.content
                 yield result
@@ -106,18 +106,27 @@ class OpenAi(Model):
                     "tool_calls": [],
                     "content": "",
                 }
+                final_tool_calls = {}
                 for event in response:
                     if event.type == "content.delta":
                         if event.parsed is not None:
-                            # print("content.delta parsed:", event.parsed)
                             result["content"] = event.parsed
-                    elif event.type == "content.done":
-                        # print("content.done")
-                        pass
-                    elif event.type == "error":
-                        # print("Error in stream:", event.error)
-                        pass
+
+                    elif event.type == "chunk":
+                        for tool_call in event.chunk.choices[0].delta.tool_calls or []:
+                            index = tool_call.index
+                            if index not in final_tool_calls:
+                                final_tool_calls[index] = tool_call
+
+                            final_tool_calls[
+                                index
+                            ].function.arguments += tool_call.function.arguments
+                            result["tool_calls"] = [
+                                v for _, v in final_tool_calls.items()
+                            ]
+
                     yield result
+
                 return
 
     def get_tool_format(self) -> Dict[str, Any]:
