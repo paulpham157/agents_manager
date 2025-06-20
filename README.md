@@ -34,6 +34,7 @@ pip install agents-manager
 ## Quick Start
 
 ```python
+from agents_manager.utils import handover
 from agents_manager import Agent, AgentManager
 from agents_manager.models import OpenAi, Anthropic, Genai
 
@@ -66,13 +67,10 @@ def transfer_to_agent_3_for_math_calculation() -> Agent:
     """
     return agent3
 
-
-def transfer_to_agent_2_for_math_calculation() -> Agent:
-    """
-    Transfer to agent 2 for math calculation.    
-    """
-    agent2.set_instruction("You can change the instruction here")
-    return agent2
+# The 'handover' function allows for transferring tasks to specific agents by name instead of instance.
+# When `share_context` is set to True, the receiving agent will receive the 
+# chat history of the agent that is invoking the handover.
+handover_to_agent2 = handover(name="agent2", description="This is a calculator", share_context=False)
 
 # Define agents
 agent3 = Agent(
@@ -93,12 +91,16 @@ agent1 = Agent(
     name="agent1",
     instruction="You are a helpful assistant",
     model=openaiModel,
-    tools=[transfer_to_agent_2_for_math_calculation]
+    tools=[handover_to_agent2]
 )
 
 # Initialize Agent Manager and run agent
 agent_manager = AgentManager()
 agent_manager.add_agent(agent1)
+
+# Using transfer doesn't require pre-adding the agent, but with handover, the agent must be added to
+# the agent_manager beforehand.
+agent_manager.add_agent(agent2)
 
 response = agent_manager.run_agent("agent1", "What is 2 multiplied by 3?")
 print(response["content"])
@@ -184,6 +186,7 @@ Note 1: The output_format should be a pydantic model.
 
 Note 2: Anthropic model does not support output_format, you can use tool to format the output.
 
+Note 3: `handover` with share_context does not work correctly for Genai
 
 You can also run the agent with a dictionary as the input content.
 ```python
