@@ -9,7 +9,7 @@ class Container:
         self.name = name
         self.description = description
         self.environment = kwargs.get("environment", {})
-        self.auth_credentials = kwargs.get("authenticate", {})
+        self.auth_credentials = kwargs.pop("authenticate", {})
         self.return_to = kwargs.get("return_to", None)
         self.kwargs = kwargs
         self.client = None
