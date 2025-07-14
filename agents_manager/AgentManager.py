@@ -95,6 +95,7 @@ class AgentManager:
         self,
         tool_result: Agent,
         function_name: str,
+        id: Any,
         user_input: Optional[Any],
     ):
         if not self.get_agent(tool_result.name)[1]:
@@ -136,7 +137,7 @@ class AgentManager:
 
         if isinstance(tool_result, Agent):
             tool_response = self._handle_agent_tool_call(
-                tool_result, function_name, user_input
+                tool_result, function_name, id, user_input
             )
 
         else:
@@ -229,7 +230,7 @@ class AgentManager:
 
         if isinstance(tool_result, Agent):
             tool_response = self._handle_agent_tool_call(
-                tool_result, function_name, user_input
+                tool_result, function_name, id, user_input
             )
 
         else:
