@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Union, Optional, Generator, Callable
+import json, re
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
@@ -153,11 +154,25 @@ class OpenAi(Model):
             "function": {"name": "{name}", "arguments": "{arguments}"},
         }
 
+    def _merge_unique_json_objects(self, s):
+        # Find all JSON objects using a regex that matches {...}
+        json_objects = re.findall(r"\{.*?\}", s)
+
+        merged = {}
+        for obj_str in json_objects:
+            obj = json.loads(obj_str)
+            for key, value in obj.items():
+                if key not in merged:
+                    merged[key] = value
+        return merged
+
     def get_keys_in_tool_output(self, tool_call: Any) -> Dict[str, Any]:
         return {
             "id": tool_call.id,
             "name": tool_call.function.name,
-            "arguments": tool_call.function.arguments,
+            "arguments": json.dumps(
+                self._merge_unique_json_objects(tool_call.function.arguments)
+            ),
         }
 
     def get_assistant_message(self, response: Any):
