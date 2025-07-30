@@ -7,12 +7,6 @@ from agents_manager.Container import Container
 from agents_manager.utils import write_log
 from agents_manager.Agent import Agent
 
-logging.basicConfig(
-    filename="agents_manager.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-)
-
 
 class AgentManager:
     def __init__(self, log: bool = True) -> None:
@@ -21,8 +15,6 @@ class AgentManager:
         """
 
         self.log = log
-        # self.logger = logging.getLogger(__name__)
-
         self.tool_logger = logging.getLogger("agents_manager.Tool")
         self.logger = logging.getLogger("agents_manager.AgentManager")
         self.container_logger = logging.getLogger("agents_manager.Container")
