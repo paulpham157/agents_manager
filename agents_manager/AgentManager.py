@@ -7,6 +7,12 @@ from agents_manager.Container import Container
 from agents_manager.utils import write_log
 from agents_manager.Agent import Agent
 
+logging.basicConfig(
+    filename="agents_manager.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+)
+
 
 class AgentManager:
     def __init__(self, log: bool = True) -> None:
@@ -15,7 +21,11 @@ class AgentManager:
         """
 
         self.log = log
-        self.logger = logging.getLogger(__name__)
+        # self.logger = logging.getLogger(__name__)
+
+        self.tool_logger = logging.getLogger("agents_manager.Tool")
+        self.logger = logging.getLogger("agents_manager.AgentManager")
+        self.container_logger = logging.getLogger("agents_manager.Container")
 
         write_log(self.log, self.logger, "AgentManager log setup")
 
@@ -136,11 +146,21 @@ class AgentManager:
         tool_result = tool(**arguments)
 
         if isinstance(tool_result, Agent):
+            write_log(
+                self.log,
+                self.tool_logger,
+                f"{{tool_name: {tool.__name__}, arguments: {arguments}, result: {tool_result}}}",
+            )
             tool_response = self._handle_agent_tool_call(
                 tool_result, function_name, id, user_input
             )
 
         else:
+            write_log(
+                self.log,
+                self.tool_logger,
+                f"{{tool_name: {tool.__name__}, arguments: {arguments}, result: {tool_result}}}",
+            )
             tool_response = {
                 "id": id,
                 "tool_result": str(tool_result),
@@ -175,6 +195,12 @@ class AgentManager:
         )
 
         tool_result = tool()
+
+        write_log(
+            self.log,
+            self.tool_logger,
+            f"{{tool_name: {tool.__name__}, arguments: {{}}, result: {tool_result}}}",
+        )
 
         write_log(
             self.log,
@@ -229,11 +255,23 @@ class AgentManager:
         tool_result = tool.run(arguments)
 
         if isinstance(tool_result, Agent):
+            write_log(
+                self.log,
+                self.container_logger,
+                f"{{tool_name: {tool.name}, arguments: {arguments}, result: {tool_result}}}",
+            )
+
             tool_response = self._handle_agent_tool_call(
                 tool_result, function_name, id, user_input
             )
 
         else:
+            write_log(
+                self.log,
+                self.container_logger,
+                f"{{tool_name: {tool.name}, arguments: {arguments}, result: {tool_result}}}",
+            )
+
             tool_response = {
                 "id": id,
                 "tool_result": str(tool_result),
