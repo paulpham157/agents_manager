@@ -292,6 +292,22 @@ class Genai(Model):
             user_input = [message]
             current_messages.extend(user_input)
         if isinstance(message, list):
+            for i, msg in enumerate(message):
+                if isinstance(msg, dict):
+                    content = msg["content"]
+                    if isinstance(content, list):
+                        for j, con in enumerate(content):
+                            if isinstance(con, types.File):
+                                parts_dict = {
+                                    "file_data": {
+                                        "file_uri": con.uri,
+                                        "mime_type": con.mime_type,
+                                    }
+                                }
+                                message[i]["content"][j] = parts_dict
+                            if isinstance(con, str):
+                                message[i]["content"][j] = {"text": con}
+
             current_messages.extend(message)
         self.set_messages(current_messages)
 
